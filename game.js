@@ -287,7 +287,7 @@ function renderVenue() {
       <div class="venue-page-actions">
         ${unlocked
           ? `<button class="btn primary" id="enter-venue">${state.cash < v.buyIn ? 'NOT ENOUGH CASH' : 'Enter Venue'}</button>
-             ${v.partnerAvailable ? '<button class="btn" id="recruit-partner">Recruit Partner</button>' : '<button class="btn ghost" disabled>No partner allowed here</button>'}`
+             ${v.partnerAvailable ? '<button class="btn" id="call-worm">📞 Call Worm</button>' : '<button class="btn ghost" disabled>No partner allowed here</button>'}`
           : `<button class="btn ghost" disabled>${unlockText(v)}</button>
              <button class="btn ghost" disabled>—</button>`}
         <button class="btn" id="venue-back-btn-2">Back to map</button>
@@ -299,10 +299,13 @@ function renderVenue() {
     enterBtn.disabled = state.cash < v.buyIn;
     enterBtn.addEventListener('click', () => { state.partnerId = null; enterVenue(v); });
   }
-  const recruitBtn = $('#recruit-partner', page);
-  if (recruitBtn) {
-    recruitBtn.disabled = state.cash < v.buyIn;
-    recruitBtn.addEventListener('click', () => openTeamUp(v));
+  const callWormBtn = $('#call-worm', page);
+  if (callWormBtn) {
+    callWormBtn.disabled = state.cash < v.buyIn;
+    callWormBtn.addEventListener('click', () => {
+      state.partnerId = 'worm';
+      enterVenue(v);
+    });
   }
   page.querySelector('#venue-back-btn').addEventListener('click', () => showScreen('map'));
   page.querySelector('#venue-back-btn-2')?.addEventListener('click', () => showScreen('map'));
