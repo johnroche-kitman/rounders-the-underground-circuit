@@ -88,6 +88,7 @@ function showScreen(name) {
   if (screen) screen.classList.add('active');
   if (name === 'map')     renderMap();
   if (name === 'venue')   renderVenue();
+  if (name === 'table-preview') renderTablePreview();
   if (name === 'phone')   renderPhone();
   if (name === 'sheet')   renderSheet();
   if (name === 'vig')     renderVig();
@@ -169,6 +170,64 @@ function renderMap() {
   });
 
   // Selected node already gets a yellow ring as the "you are here" marker.
+}
+
+function renderTablePreview() {
+  updateStatusBar();
+  const root = $('#table-preview');
+  if (!root || !state.session) { showScreen('map'); return; }
+  const venue = D.VENUES.find(v => v.id === state.session.venueId);
+  const seatHtml = state.session.seats.map(seat => {
+    const oppDef = D.OPPONENTS[seat.opponentId] || {};
+    const partnerDef = seat.kind === 'partner' ? D.PARTNERS[state.partnerId] : null;
+    const desc = seat.kind === 'hero' ? 'You. Bankroll, focus, and one good night between you and Vegas.'
+      : seat.kind === 'partner' ? (partnerDef?.blurb || 'Your partner. Watch his signals.')
+      : (oppDef.label || '');
+    const role = seat.kind === 'hero' ? 'You' : seat.kind === 'partner' ? 'Partner' : 'Opponent';
+    const initials = initialsFor(seat.kind === 'hero' ? 'Mike McDermott' : seat.name);
+    // Joey has a portrait sheet — show his "neutral" face in the avatar
+    const avatarHtml = (oppDef.portraitDir && oppDef.portraitMoods)
+      ? `<div class="tp-avatar has-image"><img src="${oppDef.portraitDir}neutral.jpg" alt="" /></div>`
+      : (partnerDef?.portraitDir)
+        ? `<div class="tp-avatar has-image"><img src="${partnerDef.portraitDir}neutral.jpg" alt="" /></div>`
+        : `<div class="tp-avatar">${initials}</div>`;
+    const tint = seat.portraitTint || (partnerDef ? '#3a2a1a' : '#3a2a1a');
+    return `
+      <div class="tp-seat" data-kind="${seat.kind}" style="--portrait-tint: ${tint}">
+        <div class="tp-header">
+          ${avatarHtml}
+          <div class="tp-text">
+            <span class="tp-name">${seat.kind === 'hero' ? 'Mike McDermott' : seat.name}</span>
+            <span class="tp-role">${role}</span>
+          </div>
+        </div>
+        <div class="tp-desc">${desc}</div>
+      </div>
+    `;
+  }).join('');
+
+  const npcCount = state.session.seats.length - 1;
+  const partnerLine = state.partnerId ? ` · partnering with ${D.PARTNERS[state.partnerId].shortName || 'partner'}` : '';
+  root.innerHTML = `
+    <div class="table-preview-head">
+      <span class="preview-eyebrow">${venue.name}</span>
+      <h1>Meet the Table</h1>
+      <span class="preview-sub">${npcCount} player${npcCount === 1 ? '' : 's'} sit across from you${partnerLine}.</span>
+    </div>
+    <div class="table-preview-seats">${seatHtml}</div>
+    <div class="table-preview-actions">
+      <button class="btn" id="preview-back">&larr; Back to Venue</button>
+      <button class="btn primary" id="preview-take-seat">Take Your Seat</button>
+    </div>
+  `;
+  $('#preview-back').addEventListener('click', () => {
+    // Refund the buy-in and return to venue page
+    state.cash += venue.buyIn;
+    state.session = null;
+    saveState();
+    showScreen('venue');
+  });
+  $('#preview-take-seat').addEventListener('click', takeSeat);
 }
 
 function renderVenue() {
@@ -365,14 +424,24 @@ function enterVenue(venue) {
     wormLastSignal: null,
   };
   state.focus = Math.min(100, state.focus + 10);
-  // Primary opp portrait (only used when single-opp venue keeps big portrait)
+  // Show the table preview before dropping into the hand
+  showScreen('table-preview');
+  updateStatusBar();
+  saveState();
+}
+
+function takeSeat() {
+  if (!state.session) return;
+  const venue = D.VENUES.find(v => v.id === state.session.venueId);
+  const primaryOpp = D.OPPONENTS[state.session.opponentList[0]];
+  const partner = state.partnerId ? D.PARTNERS[state.partnerId] : null;
+  const partnerSits = partner && partner.sitsAtTable !== false && partner.profile;
   $('#opp-portrait').style.setProperty('--portrait-tint', primaryOpp.portraitTint);
   $('#opp-name').textContent = primaryOpp.name;
   setupPortraitArea($('#opp-face'), primaryOpp);
   setupWormPanel(partnerSits ? partner : null);
   setupOpponentLayout();
   showScreen('poker');
-  updateStatusBar();
   startNewHand(true);
   saveState();
 }
@@ -485,13 +554,15 @@ function renderFight() {
   $('#hero-chips-label').textContent = dollars(hand.seats[heroIdx()].stack);
   $('#hero-chips-bar').style.width = Math.max(0, Math.min(100, (hand.seats[heroIdx()].stack / startStack) * 100)) + '%';
   if (isMultiOpp()) {
-    const live = P.liveSeats(hand).length;
-    const total = hand.seats.length;
-    const venueName = D.VENUES.find(v => v.id === state.session.venueId)?.name || 'Table';
-    $('#opp-name').textContent = venueName;
-    $('#opp-chips-label').textContent = `${live} / ${total} live · POT ${dollars(hand.pot)}`;
-    const oppBar = $('#opp-chips-bar');
-    if (oppBar) oppBar.style.width = (live / total * 100) + '%';
+    // Top-left header tracks the focused (= most recent or current) player
+    const fIdx = state.session.focusedOppIdx ?? allOpponentIdxs()[0];
+    const fSeat = hand.seats[fIdx];
+    if (fSeat) {
+      $('#opp-name').textContent = fSeat.name;
+      $('#opp-chips-label').textContent = dollars(fSeat.stack);
+      const oppBar = $('#opp-chips-bar');
+      if (oppBar) oppBar.style.width = Math.max(0, Math.min(100, (fSeat.stack / startStack) * 100)) + '%';
+    }
   } else {
     $('#opp-chips-label').textContent = dollars(hand.seats[oIdx].stack);
     $('#opp-chips-bar').style.width  = Math.max(0, Math.min(100, (hand.seats[oIdx].stack / startStack) * 100)) + '%';
@@ -518,8 +589,16 @@ function renderFight() {
 
   // Opponent area: single big portrait vs. multi-opp felt seats + namecard
   if (isMultiOpp()) {
+    // Auto-follow the current actor when it's an opponent's turn
+    if (!hand.finished) {
+      const cur = hand.toActIdx;
+      const curSeat = state.session.seats[cur];
+      if (curSeat && curSeat.kind === 'opponent') {
+        state.session.focusedOppIdx = cur;
+      }
+    }
     renderFeltSeats();
-    renderFocusedOppNamecard();
+    renderFocusedOppLeftRail();
     $('#opp-portrait').classList.remove('to-act');
   } else {
     $('#opp-portrait').classList.toggle('to-act', hand.toActIdx === oIdx);
@@ -630,18 +709,9 @@ function setupOpponentLayout() {
   const portrait = $('#opp-portrait');
   if (isMultiOpp()) {
     portrait.classList.add('multi-opp');
-    portrait.innerHTML = `
-      <div class="opp-namecard" id="opp-namecard">
-        <span class="nc-initials" id="opp-namecard-initials"></span>
-        <span class="nc-name" id="opp-namecard-name"></span>
-        <span class="nc-label" id="opp-namecard-label"></span>
-      </div>
-      <div class="dialog-bubble">
-        <span class="dialog-speaker" id="dialog-speaker"></span>
-        <span class="dialog-text" id="dialog-text"></span>
-      </div>
-    `;
     state.session.focusedOppIdx = allOpponentIdxs()[0];
+    // Inner content is rendered per-focus by renderFocusedOppLeftRail
+    state.session.leftRailMode = null;
   } else {
     portrait.classList.remove('multi-opp');
     portrait.innerHTML = `
@@ -654,6 +724,56 @@ function setupOpponentLayout() {
     const primaryOpp = D.OPPONENTS[state.session.opponentList[0]];
     setupPortraitArea($('#opp-face'), primaryOpp);
   }
+}
+
+// Render the left rail for the focused opp. Picks portrait-sheet mode (Joey's
+// painterly faces) when available, else falls back to a stylised namecard.
+function renderFocusedOppLeftRail() {
+  if (!isMultiOpp()) return;
+  const idx = state.session.focusedOppIdx;
+  if (idx == null) return;
+  const sessionSeat = state.session.seats[idx];
+  if (!sessionSeat) return;
+  const oppDef = D.OPPONENTS[sessionSeat.opponentId] || {};
+  const portrait = $('#opp-portrait');
+  const wantMode = (oppDef.portraitDir && oppDef.portraitMoods) ? 'portrait' : 'namecard';
+  const lastIdx = state.session.lastLeftRailIdx;
+  // Re-render only when focused opp changes (avoids reloading <img>s)
+  if (state.session.leftRailMode !== wantMode || lastIdx !== idx) {
+    if (wantMode === 'portrait') {
+      portrait.style.setProperty('--portrait-tint', sessionSeat.portraitTint);
+      portrait.innerHTML = `
+        <div class="portrait-face" id="opp-face"></div>
+        <div class="dialog-bubble">
+          <span class="dialog-speaker" id="dialog-speaker"></span>
+          <span class="dialog-text" id="dialog-text"></span>
+        </div>
+      `;
+      setupPortraitArea($('#opp-face'), oppDef);
+    } else {
+      portrait.innerHTML = `
+        <div class="opp-namecard" id="opp-namecard">
+          <span class="nc-initials"></span>
+          <span class="nc-name"></span>
+          <span class="nc-label"></span>
+        </div>
+        <div class="dialog-bubble">
+          <span class="dialog-speaker" id="dialog-speaker"></span>
+          <span class="dialog-text" id="dialog-text"></span>
+        </div>
+      `;
+      const nc = $('#opp-namecard');
+      if (nc) nc.style.setProperty('--portrait-tint', sessionSeat.portraitTint || '#3a2a1a');
+      const initials = initialsFor(sessionSeat.name);
+      nc.querySelector('.nc-initials').textContent = initials;
+      nc.querySelector('.nc-name').textContent = sessionSeat.name;
+      nc.querySelector('.nc-label').textContent = oppDef.label || '';
+    }
+    state.session.leftRailMode = wantMode;
+    state.session.lastLeftRailIdx = idx;
+  }
+  // Refresh mood if portrait-sheet mode
+  if (wantMode === 'portrait') refreshOpponentMood();
 }
 
 function renderFeltSeats() {
@@ -700,23 +820,7 @@ function setFocusedOpp(idx) {
   renderFocusedOppNamecard();
 }
 
-function renderFocusedOppNamecard() {
-  if (!isMultiOpp()) return;
-  const idx = state.session.focusedOppIdx;
-  if (idx == null || !hand) return;
-  const sessionSeat = state.session.seats[idx];
-  if (!sessionSeat) return;
-  const oppDef = D.OPPONENTS[sessionSeat.opponentId] || {};
-  const initials = sessionSeat.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
-  const nc = $('#opp-namecard');
-  if (nc) nc.style.setProperty('--portrait-tint', sessionSeat.portraitTint || '#3a2a1a');
-  const initEl = $('#opp-namecard-initials');
-  const nameEl = $('#opp-namecard-name');
-  const labelEl = $('#opp-namecard-label');
-  if (initEl) initEl.textContent = initials;
-  if (nameEl) nameEl.textContent = sessionSeat.name;
-  if (labelEl) labelEl.textContent = oppDef.label || '';
-}
+function renderFocusedOppNamecard() { renderFocusedOppLeftRail(); }
 
 function pushDialog(idx, situation) {
   if (!isMultiOpp()) return;
@@ -752,9 +856,17 @@ function setupPortraitArea(face, character) {
     });
     setMoodOn(face, 'neutral');
   } else if (character) {
-    face.textContent = character.name.split(' ').map(s => s[0]).join('').slice(0, 2);
+    face.textContent = initialsFor(character.name);
     face.style.fontSize = '';
   }
+}
+
+function initialsFor(name) {
+  if (!name) return '?';
+  const words = name.split(' ').filter(w => w.length > 1 && !/^["'(]/.test(w));
+  if (!words.length) return name.slice(0, 2).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
 function setMoodOn(face, mood) {

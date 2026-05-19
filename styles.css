@@ -292,6 +292,108 @@ body {
 .safety-net.vig .net-title { color: var(--blood); }
 .safety-net .net-sub { color: var(--paper-dim); font-size: 10px; }
 
+/* ----- Table Preview (#screen-table-preview) ----------------------------- */
+#screen-table-preview { flex-direction: column; background: var(--ink); }
+.table-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 48px 28px;
+  overflow-y: auto;
+}
+.table-preview-head {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 28px;
+}
+.table-preview-head .preview-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--paper-faint);
+}
+.table-preview-head h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px; color: var(--amber);
+  letter-spacing: 0.01em;
+}
+.table-preview-head .preview-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; color: var(--paper-dim);
+  letter-spacing: 0.1em;
+}
+.table-preview-seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
+}
+.tp-seat {
+  position: relative;
+  display: flex; flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: linear-gradient(160deg, var(--portrait-tint, #2a1c14) 0%, #0e0c0a 100%);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--portrait-tint, var(--amber));
+  min-height: 200px;
+}
+.tp-seat::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 4px);
+  pointer-events: none;
+}
+.tp-seat .tp-header {
+  display: flex; gap: 12px; align-items: center;
+  z-index: 1;
+}
+.tp-seat .tp-avatar {
+  width: 56px; height: 56px;
+  background: linear-gradient(160deg, var(--portrait-tint, #3a2a1a) 0%, #0a0808 100%);
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(232,217,192,0.85);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.95);
+  flex-shrink: 0;
+}
+.tp-seat .tp-avatar.has-image {
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+}
+.tp-seat .tp-avatar img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center 28%;
+}
+.tp-seat .tp-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tp-seat .tp-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; font-weight: 700; color: var(--amber);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+}
+.tp-seat .tp-role {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--paper-faint);
+}
+.tp-seat .tp-desc {
+  font-size: 13px; color: var(--paper-dim); line-height: 1.45;
+  font-style: italic;
+  z-index: 1;
+}
+.tp-seat[data-kind="hero"]     { border-left-color: var(--neon); }
+.tp-seat[data-kind="hero"] .tp-name { color: var(--neon); }
+.tp-seat[data-kind="partner"]  { border-left-color: var(--amber); }
+.tp-seat[data-kind="opponent"] { /* uses portrait-tint */ }
+
+.table-preview-actions {
+  display: flex; gap: 14px; margin-top: auto; padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.table-preview-actions .btn { padding: 18px 28px; font-size: 13px; flex: 1; text-align: center; }
+.table-preview-actions .btn.primary { flex: 2; }
+
 /* ----- Venue full-page takeover (#screen-venue) -------------------------- */
 #screen-venue { flex-direction: column; background: var(--ink); }
 .venue-page {
