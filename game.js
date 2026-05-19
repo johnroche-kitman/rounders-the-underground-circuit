@@ -546,20 +546,22 @@ function renderActionBar() {
   readBtn.addEventListener('click', readIntent);
   bar.appendChild(readBtn);
 
-  // Cheating — Peek and Muck (and Squeeze if partner is Worm and we owe nothing)
+  // Cheating — Peek and Muck. Only the dealer touches the deck, so these are
+  // only available when the hero seat (0) holds the button this hand.
+  const heroIsDealer = hand.buttonIndex === heroIdx();
   const cheatPeek = document.createElement('button');
   cheatPeek.className = 'action-btn cheat';
   const peekRisk = Math.round(cheatRiskPct('peek') * 100);
-  cheatPeek.innerHTML = `<span>CHEAT: PEEK DECK</span><span class="key">${peekRisk}% risk</span>`;
-  cheatPeek.disabled = venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
+  cheatPeek.innerHTML = `<span>CHEAT: PEEK DECK</span><span class="key">${heroIsDealer ? peekRisk + '% risk' : 'DEALER ONLY'}</span>`;
+  cheatPeek.disabled = !heroIsDealer || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   cheatPeek.addEventListener('click', cheatPeekTopCard);
   bar.appendChild(cheatPeek);
 
   const muckBtn = document.createElement('button');
   muckBtn.className = 'action-btn cheat';
   const muckRisk = Math.round(cheatRiskPct('muck') * 100);
-  muckBtn.innerHTML = `<span>CHEAT: MUCK CARD</span><span class="key">${muckRisk}% risk</span>`;
-  muckBtn.disabled = !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
+  muckBtn.innerHTML = `<span>CHEAT: MUCK CARD</span><span class="key">${heroIsDealer ? muckRisk + '% risk' : 'DEALER ONLY'}</span>`;
+  muckBtn.disabled = !heroIsDealer || !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   muckBtn.addEventListener('click', cheatMuckCard);
   bar.appendChild(muckBtn);
 }
@@ -862,6 +864,10 @@ function cheatRiskPct(kind) {
 
 function cheatPeekTopCard() {
   if (!hand) return;
+  if (hand.buttonIndex !== heroIdx()) {
+    setBanner('Only the dealer can touch the deck.', 'bad');
+    return;
+  }
   const risk = cheatRiskPct('peek');
   state.session.suspicion = Math.min(1, state.session.suspicion + 0.15);
   if (Math.random() < risk) return cheatBusted();
@@ -874,6 +880,10 @@ function cheatPeekTopCard() {
 
 function cheatMuckCard() {
   if (state.sleeveCard) return;
+  if (!hand || hand.buttonIndex !== heroIdx()) {
+    setBanner('Only the dealer can muck a card.', 'bad');
+    return;
+  }
   const risk = cheatRiskPct('muck');
   state.session.suspicion = Math.min(1, state.session.suspicion + 0.22);
   if (Math.random() < risk) return cheatBusted();
