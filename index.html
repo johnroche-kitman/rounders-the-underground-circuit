@@ -45,45 +45,10 @@
   <!-- ============================================================ -->
   <div class="screen active" id="screen-map">
     <div class="map-canvas" id="map-canvas">
-      <!-- Stylised NYC skyline silhouette -->
-      <svg class="skyline" viewBox="0 0 1600 400" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#1a1410" stop-opacity="0.0"/>
-            <stop offset="100%" stop-color="#0a0808" stop-opacity="0.9"/>
-          </linearGradient>
-        </defs>
-        <path fill="url(#skyGrad)" d="M0,400 L0,260 L60,260 L60,200 L100,200 L100,240 L140,240 L140,180 L180,180 L180,150 L210,150 L210,210 L260,210 L260,170 L290,170 L290,230 L330,230 L330,140 L360,140 L360,200 L410,200 L410,260 L450,260 L450,180 L490,180 L490,220 L540,220 L540,140 L570,140 L570,90 L600,90 L600,160 L660,160 L660,220 L700,220 L700,260 L740,260 L740,180 L780,180 L780,140 L820,140 L820,200 L860,200 L860,160 L900,160 L900,240 L950,240 L950,180 L990,180 L990,140 L1020,140 L1020,200 L1060,200 L1060,240 L1100,240 L1100,180 L1140,180 L1140,260 L1180,260 L1180,200 L1220,200 L1220,150 L1260,150 L1260,220 L1310,220 L1310,180 L1350,180 L1350,260 L1400,260 L1400,200 L1440,200 L1440,160 L1480,160 L1480,240 L1520,240 L1520,200 L1560,200 L1560,260 L1600,260 L1600,400 Z"/>
-        <!-- Lit windows -->
-        <g fill="#d18a36" opacity="0.45">
-          <rect x="78" y="220" width="3" height="6"/>
-          <rect x="120" y="200" width="3" height="6"/>
-          <rect x="155" y="240" width="3" height="6"/>
-          <rect x="225" y="170" width="3" height="6"/>
-          <rect x="305" y="190" width="3" height="6"/>
-          <rect x="345" y="160" width="3" height="6"/>
-          <rect x="425" y="220" width="3" height="6"/>
-          <rect x="470" y="200" width="3" height="6"/>
-          <rect x="555" y="110" width="3" height="6"/>
-          <rect x="620" y="180" width="3" height="6"/>
-          <rect x="685" y="240" width="3" height="6"/>
-          <rect x="760" y="200" width="3" height="6"/>
-          <rect x="810" y="170" width="3" height="6"/>
-          <rect x="875" y="180" width="3" height="6"/>
-          <rect x="925" y="260" width="3" height="6"/>
-          <rect x="975" y="160" width="3" height="6"/>
-          <rect x="1045" y="220" width="3" height="6"/>
-          <rect x="1115" y="200" width="3" height="6"/>
-          <rect x="1170" y="220" width="3" height="6"/>
-          <rect x="1235" y="170" width="3" height="6"/>
-          <rect x="1295" y="240" width="3" height="6"/>
-          <rect x="1370" y="200" width="3" height="6"/>
-          <rect x="1455" y="180" width="3" height="6"/>
-          <rect x="1495" y="260" width="3" height="6"/>
-        </g>
-      </svg>
-      <div class="map-grain"></div>
-      <div id="venue-nodes"></div>
+      <div class="map-stage" id="map-stage">
+        <div class="map-grain"></div>
+        <div id="venue-nodes"></div>
+      </div>
       <div class="safety-net vig" id="vig-node">
         <span class="net-title">[!] The Vig</span>
         <span class="net-sub">Loan Shark — Amsterdam Billiards</span>

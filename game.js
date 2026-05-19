@@ -184,28 +184,38 @@ function renderMap() {
     ? 'HIGH — Sharp surveillance, heavy penalties.'
     : 'EXTREME — Cops at the table. Instant ban + arrest.';
   panel.classList.remove('empty');
+  const heroHtml = v.interiorImage
+    ? `<div class="venue-hero">
+         <img src="${v.interiorImage}" alt="" />
+         <div class="venue-hero-sub">${v.gameType} · ${dollars(v.buyIn)} buy-in</div>
+         <div class="venue-hero-title">${v.name}</div>
+       </div>`
+    : '';
   panel.innerHTML = `
-    <div class="panel-header">
-      <h2>${v.name}</h2>
-      <div class="panel-sub">${v.blurb}</div>
-    </div>
-    <div class="panel-block">
-      <div class="panel-stat"><span class="lbl">Game Type</span> <span class="val">${v.gameType}</span></div>
-      <div class="panel-stat"><span class="lbl">Buy-In</span> <span class="val">${dollars(v.buyIn)}</span></div>
-      <div class="panel-stat"><span class="lbl">Payout</span> <span class="val good">${v.payoutHint}</span></div>
-      <div class="panel-stat"><span class="lbl">Respect</span> <span class="val amber">${v.rpHint}</span></div>
-    </div>
-    <div class="panel-block">
-      <div class="panel-stat"><span class="lbl">Competence</span> <span class="val"><span class="competence-dots">${competenceDots}</span></span></div>
-      <div class="panel-stat"><span class="lbl">Cheating Risk</span> <span class="val ${riskClass}">${riskText.split(' — ')[0]}</span></div>
-      <div class="panel-stat"><span class="lbl">Partner</span> <span class="val">${v.partnerAvailable ? 'Available' : (v.partnerNote || 'Unavailable')}</span></div>
-      <div class="panel-stat"><span class="lbl">Unlock</span> <span class="val">${unlocked ? 'Open' : unlockText(v)}</span></div>
-    </div>
-    <div class="panel-actions">
-      ${unlocked
-        ? `<button class="btn primary" id="enter-venue">${state.cash < v.buyIn ? 'NOT ENOUGH CASH' : 'Enter Venue'}</button>
-           ${v.partnerAvailable ? '<button class="btn" id="recruit-partner">Recruit Partner</button>' : ''}`
-        : `<button class="btn" disabled>${unlockText(v)}</button>`}
+    ${heroHtml}
+    <div class="venue-panel-grid">
+      <div class="panel-header">
+        ${v.interiorImage ? '' : `<h2>${v.name}</h2>`}
+        <div class="panel-sub">${v.blurb}</div>
+      </div>
+      <div class="panel-block">
+        <div class="panel-stat"><span class="lbl">Game Type</span> <span class="val">${v.gameType}</span></div>
+        <div class="panel-stat"><span class="lbl">Buy-In</span> <span class="val">${dollars(v.buyIn)}</span></div>
+        <div class="panel-stat"><span class="lbl">Payout</span> <span class="val good">${v.payoutHint}</span></div>
+        <div class="panel-stat"><span class="lbl">Respect</span> <span class="val amber">${v.rpHint}</span></div>
+      </div>
+      <div class="panel-block">
+        <div class="panel-stat"><span class="lbl">Competence</span> <span class="val"><span class="competence-dots">${competenceDots}</span></span></div>
+        <div class="panel-stat"><span class="lbl">Cheating Risk</span> <span class="val ${riskClass}">${riskText.split(' — ')[0]}</span></div>
+        <div class="panel-stat"><span class="lbl">Partner</span> <span class="val">${v.partnerAvailable ? 'Available' : (v.partnerNote || 'Unavailable')}</span></div>
+        <div class="panel-stat"><span class="lbl">Unlock</span> <span class="val">${unlocked ? 'Open' : unlockText(v)}</span></div>
+      </div>
+      <div class="panel-actions">
+        ${unlocked
+          ? `<button class="btn primary" id="enter-venue">${state.cash < v.buyIn ? 'NOT ENOUGH CASH' : 'Enter Venue'}</button>
+             ${v.partnerAvailable ? '<button class="btn" id="recruit-partner">Recruit Partner</button>' : ''}`
+          : `<button class="btn" disabled>${unlockText(v)}</button>`}
+      </div>
     </div>
   `;
   const enterBtn = $('#enter-venue', panel);
