@@ -20,6 +20,7 @@ const VENUES = [
     partnerAvailable: true,
     coords: { x: 56, y: 78 },
     opponentId: 'deli_grinder',
+    opponents: ['deli_grinder'],
     openings: ['day', 'night', 'late'],
     interiorImage: 'joey-deli.jpg',
   },
@@ -42,6 +43,7 @@ const VENUES = [
     partnerNote: 'Worm — Cops know him. Unavailable.',
     coords: { x: 42, y: 67 },
     opponentId: 'detective_callahan',
+    opponents: ['detective_callahan', 'detective_torres', 'patrol_donovan', 'captain_ortiz', 'judge_levine'],
     openings: ['night', 'late'],
   },
   {
@@ -61,6 +63,7 @@ const VENUES = [
     partnerAvailable: true,
     coords: { x: 58, y: 22 },
     opponentId: 'trust_fund_kid',
+    opponents: ['trust_fund_kid', 'broker_kessler', 'heir_ashford'],
     openings: ['night', 'late'],
   },
   {
@@ -80,6 +83,7 @@ const VENUES = [
     partnerAvailable: true,
     coords: { x: 30, y: 12 },
     opponentId: 'silk_glove',
+    opponents: ['silk_glove', 'broker_kessler', 'trust_fund_kid'],
     openings: ['late'],
   },
 ];
@@ -113,6 +117,46 @@ const OPPONENTS = {
       { strength: 'neutral', text: 'Stillness. A learned, professional stillness.' },
     ],
   },
+  detective_torres: {
+    name: 'Det. Torres',
+    label: 'Narcotics. Hates losing.',
+    portraitTint: '#4a3a2a',
+    profile: { competence: 0.6, aggression: 0.78, bluff: 0.3 },
+    tells: [
+      { strength: 'strong', text: 'Torres goes quiet. The man can\'t shut up when he\'s got air.' },
+      { strength: 'weak',   text: 'A flurry of jokes. He\'s building cover.' },
+    ],
+  },
+  patrol_donovan: {
+    name: 'Off. Donovan',
+    label: 'Rookie. Plays scared.',
+    portraitTint: '#2a3a4a',
+    profile: { competence: 0.35, aggression: 0.22, bluff: 0.04 },
+    tells: [
+      { strength: 'strong', text: 'Donovan finally relaxes his shoulders. He\'s got something.' },
+      { strength: 'weak',   text: 'He folds his arms tight. He\'s already folding the cards in his head.' },
+    ],
+  },
+  captain_ortiz: {
+    name: 'Capt. Ortiz',
+    label: 'Tournament regular. Senior brass.',
+    portraitTint: '#3a3a3a',
+    profile: { competence: 0.82, aggression: 0.5, bluff: 0.16 },
+    tells: [
+      { strength: 'strong', text: 'Ortiz takes his time with the chip stack. Stacking is meditation.' },
+      { strength: 'weak',   text: 'A subtle exhale. The captain doesn\'t like being on the back foot.' },
+    ],
+  },
+  judge_levine: {
+    name: 'Judge Levine',
+    label: 'Civil bench. Cold operator.',
+    portraitTint: '#3a2a3a',
+    profile: { competence: 0.88, aggression: 0.42, bluff: 0.1 },
+    tells: [
+      { strength: 'strong', text: 'The judge tents his fingers. The verdict is in his hand.' },
+      { strength: 'weak',   text: 'He removes his glasses. Wipes them. Buys himself time.' },
+    ],
+  },
   trust_fund_kid: {
     name: 'Chip Donnelly III',
     label: 'Hedge fund, two ex-wives, no fear',
@@ -124,6 +168,26 @@ const OPPONENTS = {
       { strength: 'weak',   text: 'He talks. He won\'t shut up. He\'s filling the silence with himself.' },
       { strength: 'weak',   text: 'Two fingers tap the rail. Three times. Four times. He\'s grinding his molars.' },
       { strength: 'neutral', text: 'He sips the scotch and watches you watching him.' },
+    ],
+  },
+  broker_kessler: {
+    name: 'M. Kessler',
+    label: 'Broker. Reads the room. Slow.',
+    portraitTint: '#5a4a2a',
+    profile: { competence: 0.7, aggression: 0.5, bluff: 0.2 },
+    tells: [
+      { strength: 'strong', text: 'Kessler checks his watch. Twice.' },
+      { strength: 'weak',   text: 'He pulls at his collar like the AC just died.' },
+    ],
+  },
+  heir_ashford: {
+    name: 'Bunny Ashford',
+    label: 'Heir, day-drinks, splashes the pot',
+    portraitTint: '#7a4a4a',
+    profile: { competence: 0.28, aggression: 0.82, bluff: 0.4 },
+    tells: [
+      { strength: 'strong', text: 'Bunny laughs at his own joke. He never laughs for free.' },
+      { strength: 'weak',   text: 'He frowns at the cards. Slightly cross-eyed. Probably won\'t remember calling.' },
     ],
   },
   silk_glove: {

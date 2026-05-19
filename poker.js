@@ -101,20 +101,36 @@ function compareScores(a, b) {
 // AI heuristics and Calculator-voice readouts at heads-up. With N opponents
 // raise the threshold heuristically.
 
-function estimateEquity(hole, board, samples = 250) {
+// Win probability vs N random opponents. Hero wins outright iff they beat
+// every villain. samples scale down a bit per-villain to keep this cheap.
+function estimateEquity(hole, board, oppCount = 1, samples = 250) {
+  // Back-compat: 3rd argument used to be the sample count.
+  if (typeof oppCount === 'number' && oppCount > 8) { samples = oppCount; oppCount = 1; }
+  oppCount = Math.max(1, oppCount);
+  // Cap samples for performance with many opps
+  samples = Math.max(60, Math.floor(samples / Math.max(1, oppCount * 0.5)));
   const known = [...hole, ...board];
   let wins = 0, ties = 0;
   for (let s = 0; s < samples; s++) {
     const deck = newDeck().filter(c => !known.some(k => k.rank === c.rank && k.suit === c.suit));
     shuffle(deck);
-    const villainHole = [deck.pop(), deck.pop()];
+    const oppHands = [];
+    for (let i = 0; i < oppCount; i++) {
+      oppHands.push([deck.pop(), deck.pop()]);
+    }
     const remaining = [...board];
     while (remaining.length < 5) remaining.push(deck.pop());
     const heroBest = bestFiveOfSeven([...hole, ...remaining]);
-    const villBest = bestFiveOfSeven([...villainHole, ...remaining]);
-    const cmp = compareScores(heroBest.score, villBest.score);
-    if (cmp > 0) wins++;
-    else if (cmp === 0) ties++;
+    let heroAhead = true;
+    let tieWithSomeone = false;
+    for (const oh of oppHands) {
+      const ob = bestFiveOfSeven([...oh, ...remaining]);
+      const cmp = compareScores(heroBest.score, ob.score);
+      if (cmp < 0) { heroAhead = false; break; }
+      if (cmp === 0) tieWithSomeone = true;
+    }
+    if (heroAhead && !tieWithSomeone) wins++;
+    else if (heroAhead) ties++;
   }
   return (wins + ties / 2) / samples;
 }
@@ -372,17 +388,16 @@ function aiDecide(hand, idx) {
   const seat = hand.seats[idx];
   const profile = seat.profile || { competence: 0.5, aggression: 0.4, bluff: 0.1 };
   const owed = callAmount(hand, idx);
-  const equity = estimateEquity(seat.hole, hand.board, 120);
+  // Multi-way equity: count remaining live opponents (excluding self)
+  const liveOppCount = liveSeats(hand).filter(({ i }) => i !== idx).length;
+  const equity = estimateEquity(seat.hole, hand.board, liveOppCount);
   const potOdds = owed / (hand.pot + owed || 1);
   const competence = profile.competence;
   const aggression = profile.aggression;
   const bluffRate  = profile.bluff;
 
-  // For 3+ handed, downscale equity — calling against multiple players is harder
-  const adjEquity = hand.n > 2 ? equity * 0.85 : equity;
-
   const noise = (1 - competence) * (Math.random() - 0.5) * 0.4;
-  const perceived = Math.max(0, Math.min(1, adjEquity + noise));
+  const perceived = Math.max(0, Math.min(1, equity + noise));
 
   const willBluff = Math.random() < bluffRate && seat.stack > hand.bigBlind * 4;
 

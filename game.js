@@ -300,22 +300,34 @@ function enterVenue(venue) {
   state.cash -= venue.buyIn;
   state.enteredVenueId = venue.id;
   const partner = state.partnerId ? D.PARTNERS[state.partnerId] : null;
-  const opponent = D.OPPONENTS[venue.opponentId];
+  const oppList = venue.opponents || [venue.opponentId];
+  const primaryOpp = D.OPPONENTS[oppList[0]];
   const isTournament = venue.gameType === 'Tournament';
   const startStack = isTournament ? venue.tournamentStartingStack : venue.buyIn;
 
-  // Build seat configuration: hero is always seat 0.
-  // If partner SITS at the table (e.g. Worm), insert as seat 1 between hero and opponent.
+  // Seats: hero (0), optional partner (1), then opponents in venue order.
   const partnerSits = partner && partner.sitsAtTable !== false && partner.profile;
   const seats = [{ id: 'player', name: 'Mike', kind: 'hero' }];
   if (partnerSits) {
     seats.push({ id: 'worm', name: partner.shortName || 'Worm', kind: 'partner', profile: partner.profile });
   }
-  seats.push({ id: 'opp', name: opponent.name, kind: 'opponent', profile: opponent.profile });
+  oppList.forEach((oId, i) => {
+    const o = D.OPPONENTS[oId];
+    seats.push({
+      id: `opp_${i}`,
+      name: o.name,
+      kind: 'opponent',
+      profile: o.profile,
+      opponentId: oId,
+      portraitTint: o.portraitTint,
+      label: o.label,
+    });
+  });
 
   state.session = {
     venueId: venue.id,
-    opponentId: venue.opponentId,
+    opponentId: oppList[0],
+    opponentList: oppList,
     partnerId: state.partnerId,
     isTournament,
     startStack,
@@ -334,11 +346,12 @@ function enterVenue(venue) {
     wormLastSignal: null,
   };
   state.focus = Math.min(100, state.focus + 10);
-  $('#opp-portrait').style.setProperty('--portrait-tint', opponent.portraitTint);
-  $('#opp-name').textContent = opponent.name;
-  setupPortraitArea($('#opp-face'), opponent);
-  // Partner portrait & panel
+  // Primary opp portrait (only used when single-opp venue keeps big portrait)
+  $('#opp-portrait').style.setProperty('--portrait-tint', primaryOpp.portraitTint);
+  $('#opp-name').textContent = primaryOpp.name;
+  setupPortraitArea($('#opp-face'), primaryOpp);
   setupWormPanel(partnerSits ? partner : null);
+  setupOpponentLayout();
   showScreen('poker');
   updateStatusBar();
   startNewHand(true);
@@ -349,7 +362,9 @@ function enterVenue(venue) {
 function heroIdx()    { return 0; }
 function partnerIdx() { return state.session.seats.findIndex(s => s.kind === 'partner'); }
 function opponentIdx(){ return state.session.seats.findIndex(s => s.kind === 'opponent'); }
+function allOpponentIdxs() { return state.session.seats.map((s, i) => ({ s, i })).filter(({ s }) => s.kind === 'opponent').map(({ i }) => i); }
 function isHeroTurn() { return hand && hand.toActIdx === 0; }
+function isMultiOpp() { return allOpponentIdxs().length > 1; }
 
 let hand = null;
 let raiseAmount = 0;
@@ -357,20 +372,20 @@ let pendingShowdown = false;
 
 function startNewHand(firstHand) {
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  const oIdx = opponentIdx();
+  const oppIdxs = allOpponentIdxs();
 
-  // Tournament: hero bust = over, opp bust = win.
   if (state.session.isTournament) {
     if (state.session.stacks[heroIdx()] <= 0) {
       state.session.busted = true;
       return endSession();
     }
-    if (state.session.stacks[oIdx] <= 0) {
+    // Tournament victory = all opponents busted
+    const opponentsLeft = oppIdxs.some(i => state.session.stacks[i] > 0);
+    if (!opponentsLeft) {
       state.session.tournamentWin = true;
       return endSession();
     }
   } else {
-    // Cash game: re-buy hero from cash if busted (and able)
     if (state.session.stacks[heroIdx()] <= 0) {
       if (state.cash >= venue.buyIn) {
         state.cash -= venue.buyIn;
@@ -380,12 +395,15 @@ function startNewHand(firstHand) {
         return endSession();
       }
     }
-    if (state.session.stacks[oIdx] <= 0) {
-      state.session.stacks[oIdx] = venue.buyIn;
-      state.rp += 30;
-      setBanner('KO — opponent re-buys. +30 RP.', 'good');
-    }
-    // Worm: re-buys from his own implied bankroll silently
+    // Cash: re-buy each busted opponent silently (some +RP only for first KO each)
+    let firstKO = false;
+    oppIdxs.forEach(i => {
+      if (state.session.stacks[i] <= 0) {
+        state.session.stacks[i] = venue.buyIn;
+        if (!firstKO) { state.rp += 30; firstKO = true; }
+      }
+    });
+    if (firstKO) setBanner('KO — opponent re-buys. +30 RP.', 'good');
     const pIdx = partnerIdx();
     if (pIdx >= 0 && state.session.stacks[pIdx] <= 0) {
       state.session.stacks[pIdx] = venue.buyIn;
@@ -439,11 +457,22 @@ function renderFight() {
   const oIdx = opponentIdx();
   const pIdx = partnerIdx();
 
-  // Hero + opponent chip bars
+  // Hero + opponent chip bars. In multi-opp, the left header switches to a
+  // venue/table summary instead of any single opponent.
   $('#hero-chips-label').textContent = dollars(hand.seats[heroIdx()].stack);
-  $('#opp-chips-label').textContent = dollars(hand.seats[oIdx].stack);
   $('#hero-chips-bar').style.width = Math.max(0, Math.min(100, (hand.seats[heroIdx()].stack / startStack) * 100)) + '%';
-  $('#opp-chips-bar').style.width  = Math.max(0, Math.min(100, (hand.seats[oIdx].stack / startStack) * 100)) + '%';
+  if (isMultiOpp()) {
+    const live = P.liveSeats(hand).length;
+    const total = hand.seats.length;
+    const venueName = D.VENUES.find(v => v.id === state.session.venueId)?.name || 'Table';
+    $('#opp-name').textContent = venueName;
+    $('#opp-chips-label').textContent = `${live} / ${total} live · POT ${dollars(hand.pot)}`;
+    const oppBar = $('#opp-chips-bar');
+    if (oppBar) oppBar.style.width = (live / total * 100) + '%';
+  } else {
+    $('#opp-chips-label').textContent = dollars(hand.seats[oIdx].stack);
+    $('#opp-chips-bar').style.width  = Math.max(0, Math.min(100, (hand.seats[oIdx].stack / startStack) * 100)) + '%';
+  }
 
   $('#pot-amount').textContent = dollars(hand.pot);
   $('#hand-status').textContent = streetLabel(hand.street);
@@ -464,8 +493,13 @@ function renderFight() {
   // Worm panel updates
   renderWormPanel();
 
-  // Visual active-seat indicator on opponent portrait
-  $('#opp-portrait').classList.toggle('to-act', hand.toActIdx === oIdx);
+  // Opponent area: single big portrait vs. multi-opp stack
+  if (isMultiOpp()) {
+    renderOpponentStack();
+    $('#opp-portrait').classList.remove('to-act');
+  } else {
+    $('#opp-portrait').classList.toggle('to-act', hand.toActIdx === oIdx);
+  }
   const wormPortrait = $('#worm-portrait');
   if (wormPortrait) wormPortrait.classList.toggle('to-act', pIdx >= 0 && hand.toActIdx === pIdx);
 
@@ -566,7 +600,70 @@ function renderActionBar() {
   bar.appendChild(muckBtn);
 }
 
-// ---------- Opponent portrait + mood -----------------------------------------
+// ---------- Opponent layout (single big portrait vs. multi-opp stack) -------
+
+function setupOpponentLayout() {
+  const portrait = $('#opp-portrait');
+  if (isMultiOpp()) {
+    portrait.classList.add('stack-mode');
+    portrait.innerHTML = '<div class="opp-stack" id="opp-stack"></div>';
+  } else {
+    portrait.classList.remove('stack-mode');
+    // Restore original big-portrait DOM
+    portrait.innerHTML = `
+      <div class="portrait-face" id="opp-face"></div>
+      <div class="tell-feed" id="tell-feed">
+        <span class="tell-marker">// Visual Feed</span>
+        <span id="tell-text">He waits. Stone-faced.</span>
+      </div>
+    `;
+    const primaryOpp = D.OPPONENTS[state.session.opponentList[0]];
+    setupPortraitArea($('#opp-face'), primaryOpp);
+  }
+}
+
+function renderOpponentStack() {
+  const stack = $('#opp-stack');
+  if (!stack || !hand) return;
+  const idxs = allOpponentIdxs();
+  stack.innerHTML = '';
+  idxs.forEach(i => {
+    const seat = hand.seats[i];
+    const oppDef = D.OPPONENTS[seat.opponentId] || {};
+    const initials = seat.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
+    const isToAct = !hand.finished && hand.toActIdx === i;
+    const isWinner = hand.finished && hand.winnerIdxs.includes(i);
+    const lastEvt = [...hand.history].reverse().find(h => h.idx === i && h.street === hand.street);
+    const lastLabel = lastEvt ? (lastEvt.type === 'raise' ? `RAISE ${dollars(lastEvt.amount)}`
+      : lastEvt.type === 'call'  ? `CALL ${dollars(lastEvt.amount)}`
+      : lastEvt.type === 'fold'  ? 'FOLD'
+      : 'CHECK') : '';
+    const isBtn = hand.buttonIndex === i;
+    const card = document.createElement('div');
+    card.className = 'opp-card'
+      + (seat.folded ? ' folded' : '')
+      + (isToAct ? ' to-act' : '')
+      + (isWinner ? ' winner' : '')
+      + (lastEvt ? ' acted' : '');
+    card.style.setProperty('--portrait-tint', seat.portraitTint || '#3a2a1a');
+    card.innerHTML = `
+      <div class="opp-avatar">${initials}</div>
+      <div class="opp-info">
+        <span class="opp-name">${seat.name}</span>
+        <span class="opp-label">${oppDef.label || ''}</span>
+      </div>
+      <div class="opp-chips">
+        <span class="chips">${dollars(seat.stack)}</span>
+        <span class="bet">${seat.bet > 0 ? dollars(seat.bet) : ''}</span>
+      </div>
+      ${isBtn ? '<div class="btn-pip">BTN</div>' : ''}
+      ${lastEvt ? `<div class="last-action">${lastLabel}</div>` : ''}
+    `;
+    stack.appendChild(card);
+  });
+}
+
+// ---------- Opponent portrait + mood (single-opp big portrait) ---------------
 
 function setupPortraitArea(face, character) {
   face.innerHTML = '';
@@ -653,6 +750,8 @@ function fireWormSignal(streetName) {
 
 // Mood picker — driven by live hand state, suspicion, last opp action, equity.
 function refreshOpponentMood() {
+  if (isMultiOpp()) return; // mini-card mode doesn't use the mood portraits
+  if (!$('#opp-face')) return;
   const opp = D.OPPONENTS[state.session?.opponentId];
   if (!opp || !opp.portraitMoods) return;
   const oIdx = opponentIdx();
@@ -714,8 +813,10 @@ function refreshWormMood() {
 }
 
 function renderTellFeed() {
+  const tellEl = $('#tell-text');
+  if (!tellEl) return; // multi-opp mode: no tell feed
   const tell = P.aiTell(hand, opponentIdx());
-  $('#tell-text').textContent = tell ? tell.text : 'He waits. Stone-faced.';
+  tellEl.textContent = tell ? tell.text : 'He waits. Stone-faced.';
 }
 
 // ---------- Inner monologue --------------------------------------------------
@@ -825,8 +926,11 @@ function flashAIAction(action, idx) {
   if (action.type === 'check') line = `${name} taps the felt.`;
   if (action.type === 'call')  line = `${name} calls ${dollars(action.amount)}.`;
   if (action.type === 'raise') line = `${name} raises ${dollars(action.amount)}.`;
-  // Show opp actions in the tell feed; Worm actions in the Worm signal line.
-  if (idx === opponentIdx()) $('#tell-text').textContent = line;
+  // Single-opp: surface in tell feed. Multi-opp: per-card last-action handles it.
+  if (idx === opponentIdx() && !isMultiOpp()) {
+    const tellEl = $('#tell-text');
+    if (tellEl) tellEl.textContent = line;
+  }
   if (idx === partnerIdx()) {
     const w = $('#worm-action');
     if (w) w.textContent = line;
@@ -914,24 +1018,33 @@ function cheatBusted() {
 
 function resolveHand() {
   renderFight();
-  const oIdx = opponentIdx();
   const heroSeat = hand.seats[heroIdx()];
-  const oppSeat  = hand.seats[oIdx];
 
-  // Update session bookkeeping — clean showdown = hero won and went to actual showdown
+  // Update session bookkeeping
   if (hand.winnerIdxs.includes(heroIdx())) state.session.cleanShowdownsWon++;
   if (heroSeat.best) state.session.bestHandCat = Math.max(state.session.bestHandCat, heroSeat.best.category);
+
+  // For showdown display, pick the most relevant "villain" — the winning non-hero,
+  // or the best-handed live non-hero, falling back to the first opponent.
+  const villains = hand.seats.map((s, i) => ({ s, i })).filter(({ i }) => i !== heroIdx());
+  let villainPick = null;
+  const winningVillain = villains.find(({ i }) => hand.winnerIdxs.includes(i));
+  if (winningVillain) villainPick = winningVillain;
+  else {
+    const showdownVillains = villains.filter(({ s }) => s.best).sort((a, b) => P.compareScores(b.s.best.score, a.s.best.score));
+    villainPick = showdownVillains[0] || villains.find(({ s }) => s.kind === 'opponent') || villains[0];
+  }
+  const oppSeat = villainPick.s;
 
   pendingShowdown = true;
   const sd = $('#showdown');
   const heroWon = hand.winnerIdxs.includes(heroIdx());
-  const split = hand.winnerIdxs.length > 1;
-  $('#showdown-title').textContent = split ? 'Split Pot' : (heroWon ? 'You Take The Pot' : 'Pot Goes To Them');
+  const split = hand.winnerIdxs.length > 1 && heroWon;
+  $('#showdown-title').textContent = split ? 'Split Pot' : (heroWon ? 'You Take The Pot' : `Pot Goes To ${oppSeat.name}`);
   $('#showdown-reason').textContent = hand.reason;
   const ho = $('#showdown-opp');
   const hh = $('#showdown-hero');
   ho.innerHTML = ''; hh.innerHTML = '';
-  // Show opp cards only at true showdown (i.e. opp didn't fold)
   const wentToShowdown = !!oppSeat.best;
   heroSeat.hole.forEach(c => hh.appendChild(makeCardEl(c)));
   oppSeat.hole.forEach(c => {
@@ -939,7 +1052,7 @@ function resolveHand() {
     ho.appendChild(el);
   });
   $('#showdown-hero-name').textContent = heroSeat.best ? heroSeat.best.name : '—';
-  $('#showdown-opp-name').textContent  = oppSeat.best && wentToShowdown ? oppSeat.best.name : 'Mucked';
+  $('#showdown-opp-name').textContent  = oppSeat.best && wentToShowdown ? `${oppSeat.name} — ${oppSeat.best.name}` : `${oppSeat.name} — Mucked`;
   sd.classList.remove('hidden');
   $('#next-hand-btn').onclick = () => {
     if (state.session.stacks[heroIdx()] <= 0) return endSession();
