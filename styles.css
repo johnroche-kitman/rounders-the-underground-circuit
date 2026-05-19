@@ -527,9 +527,12 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 280px 1fr 280px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   overflow: hidden;
+  min-height: 0;
 }
+.fight-table > * { min-height: 0; }
 
 .opponent-portrait {
   background: linear-gradient(160deg, var(--portrait-tint, #3a2a1a) 0%, #0e0c0a 100%);
@@ -604,6 +607,13 @@ body {
   justify-content: center;
   padding: 24px;
   gap: 20px;
+}
+/* Make room for opp seats on the top arc in multi-opp mode */
+.felt[data-opps="1"], .felt[data-opps="2"], .felt[data-opps="3"], .felt[data-opps="4"], .felt[data-opps="5"] {
+  justify-content: flex-end;
+  padding-top: 120px;
+  padding-bottom: 20px;
+  gap: 14px;
 }
 .felt::before {
   content: '';
@@ -892,7 +902,215 @@ body {
   box-shadow: inset 0 0 0 2px var(--amber);
 }
 
-/* --- Multi-opponent stack (replaces single big portrait when 2+ opps) --- */
+/* --- Multi-opp: focused opponent's "name card" in the left rail ----------- */
+.opp-namecard {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 18px;
+  background: linear-gradient(160deg, var(--portrait-tint, #3a2a1a) 0%, #0e0c0a 100%);
+  overflow: hidden;
+}
+.opp-namecard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 4px);
+  pointer-events: none;
+}
+.opp-namecard .nc-initials {
+  font-family: 'Playfair Display', serif;
+  font-size: 120px;
+  font-weight: 700;
+  color: rgba(232,217,192,0.22);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.opp-namecard .nc-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber);
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  margin-top: -10px;
+  z-index: 1;
+}
+.opp-namecard .nc-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  text-align: center;
+  z-index: 1;
+}
+
+/* Dialog bubble — speech text under portrait / namecard */
+.dialog-bubble {
+  border-top: 1px solid var(--line);
+  padding: 16px 20px 18px;
+  background: rgba(0,0,0,0.55);
+  position: relative;
+  min-height: 80px;
+}
+.dialog-bubble .dialog-speaker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: block;
+  margin-bottom: 6px;
+}
+.dialog-bubble .dialog-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--paper);
+  line-height: 1.45;
+  position: relative;
+  padding-left: 14px;
+}
+.dialog-bubble .dialog-text::before {
+  content: '\201C';
+  position: absolute;
+  left: -2px; top: -10px;
+  font-size: 40px;
+  font-style: normal;
+  color: var(--amber);
+  opacity: 0.7;
+  line-height: 1;
+}
+.dialog-bubble .dialog-text.fade {
+  animation: dialogFade 0.4s ease-out;
+}
+@keyframes dialogFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Felt seats around the table (used in multi-opp mode) ---------------- */
+.felt-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 110px;
+  z-index: 3;
+  transition: opacity 0.3s, filter 0.3s;
+}
+.felt-seat .seat-cards { display: flex; gap: 3px; }
+.felt-seat .seat-card {
+  width: 22px; height: 30px;
+  background: repeating-linear-gradient(45deg, #2a1610 0 4px, #1a0a08 4px 8px);
+  border: 1px solid #5a3a30;
+  border-radius: 3px;
+}
+.felt-seat .seat-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.95);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.felt-seat .seat-stack {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--paper-dim);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+.felt-seat .seat-bet {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--sick-yellow);
+  background: rgba(0,0,0,0.65);
+  padding: 2px 10px;
+  border: 1px solid var(--amber-deep);
+  border-radius: 12px;
+  margin-top: 2px;
+  min-height: 18px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.felt-seat.has-bet .seat-bet { opacity: 1; }
+.felt-seat.folded {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+.felt-seat.to-act .seat-name { color: var(--amber); }
+.felt-seat.to-act::before {
+  content: '';
+  position: absolute;
+  inset: -8px -12px;
+  border: 2px solid var(--amber);
+  border-radius: 8px;
+  box-shadow: 0 0 22px rgba(209,138,54,0.6);
+  z-index: -1;
+  animation: seatPulse 1.4s ease-in-out infinite;
+}
+@keyframes seatPulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+.felt-seat .seat-btn-pip {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  width: 20px; height: 20px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 50%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  z-index: 2;
+}
+.felt-seat .seat-last-action {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  background: rgba(0,0,0,0.7);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  margin-top: 2px;
+  opacity: 0;
+}
+.felt-seat.acted .seat-last-action { opacity: 1; }
+
+/* Seat positions — used for up to 5 opponents around the top arc. */
+.felt-seat[data-pos="1"] { left: 12%; top: 25%; }
+.felt-seat[data-pos="2"] { left: 30%; top: 12%; }
+.felt-seat[data-pos="3"] { left: 50%; top: 8%; }
+.felt-seat[data-pos="4"] { left: 70%; top: 12%; }
+.felt-seat[data-pos="5"] { left: 88%; top: 25%; }
+/* Fewer seats: spread across the arc */
+.felt[data-opps="1"] .felt-seat[data-pos="1"] { left: 50%; top: 12%; }
+.felt[data-opps="2"] .felt-seat[data-pos="1"] { left: 32%; top: 14%; }
+.felt[data-opps="2"] .felt-seat[data-pos="2"] { left: 68%; top: 14%; }
+.felt[data-opps="3"] .felt-seat[data-pos="1"] { left: 18%; top: 22%; }
+.felt[data-opps="3"] .felt-seat[data-pos="2"] { left: 50%; top: 10%; }
+.felt[data-opps="3"] .felt-seat[data-pos="3"] { left: 82%; top: 22%; }
+.felt[data-opps="4"] .felt-seat[data-pos="1"] { left: 14%; top: 22%; }
+.felt[data-opps="4"] .felt-seat[data-pos="2"] { left: 38%; top: 10%; }
+.felt[data-opps="4"] .felt-seat[data-pos="3"] { left: 62%; top: 10%; }
+.felt[data-opps="4"] .felt-seat[data-pos="4"] { left: 86%; top: 22%; }
+
+/* Legacy stack styles (kept harmless in case any path still uses them) */
 .opp-stack {
   display: flex;
   flex-direction: column;

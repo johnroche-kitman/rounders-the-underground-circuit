@@ -441,7 +441,11 @@ function startNewHand(firstHand) {
   $('#intrusions').innerHTML = '';
   fireIntrusionsForState();
   renderFight();
-  // Worm signals at start of hand
+  // Multi-opp: greet from the primary villain
+  if (isMultiOpp()) {
+    const primaryIdx = allOpponentIdxs()[0];
+    pushDialog(primaryIdx, 'hand_start');
+  }
   fireWormSignal('preflop');
   scheduleAITurn();
 }
@@ -493,9 +497,10 @@ function renderFight() {
   // Worm panel updates
   renderWormPanel();
 
-  // Opponent area: single big portrait vs. multi-opp stack
+  // Opponent area: single big portrait vs. multi-opp felt seats + namecard
   if (isMultiOpp()) {
-    renderOpponentStack();
+    renderFeltSeats();
+    renderFocusedOppNamecard();
     $('#opp-portrait').classList.remove('to-act');
   } else {
     $('#opp-portrait').classList.toggle('to-act', hand.toActIdx === oIdx);
@@ -605,11 +610,21 @@ function renderActionBar() {
 function setupOpponentLayout() {
   const portrait = $('#opp-portrait');
   if (isMultiOpp()) {
-    portrait.classList.add('stack-mode');
-    portrait.innerHTML = '<div class="opp-stack" id="opp-stack"></div>';
+    portrait.classList.add('multi-opp');
+    portrait.innerHTML = `
+      <div class="opp-namecard" id="opp-namecard">
+        <span class="nc-initials" id="opp-namecard-initials"></span>
+        <span class="nc-name" id="opp-namecard-name"></span>
+        <span class="nc-label" id="opp-namecard-label"></span>
+      </div>
+      <div class="dialog-bubble">
+        <span class="dialog-speaker" id="dialog-speaker"></span>
+        <span class="dialog-text" id="dialog-text"></span>
+      </div>
+    `;
+    state.session.focusedOppIdx = allOpponentIdxs()[0];
   } else {
-    portrait.classList.remove('stack-mode');
-    // Restore original big-portrait DOM
+    portrait.classList.remove('multi-opp');
     portrait.innerHTML = `
       <div class="portrait-face" id="opp-face"></div>
       <div class="tell-feed" id="tell-feed">
@@ -622,45 +637,85 @@ function setupOpponentLayout() {
   }
 }
 
-function renderOpponentStack() {
-  const stack = $('#opp-stack');
-  if (!stack || !hand) return;
+function renderFeltSeats() {
+  const felt = document.querySelector('.felt');
+  if (!felt || !hand) return;
   const idxs = allOpponentIdxs();
-  stack.innerHTML = '';
-  idxs.forEach(i => {
+  felt.dataset.opps = idxs.length;
+  // Remove old seats
+  Array.from(felt.querySelectorAll('.felt-seat')).forEach(el => el.remove());
+  idxs.forEach((i, pos) => {
     const seat = hand.seats[i];
-    const oppDef = D.OPPONENTS[seat.opponentId] || {};
-    const initials = seat.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
-    const isToAct = !hand.finished && hand.toActIdx === i;
-    const isWinner = hand.finished && hand.winnerIdxs.includes(i);
+    const sessionSeat = state.session.seats[i];
     const lastEvt = [...hand.history].reverse().find(h => h.idx === i && h.street === hand.street);
-    const lastLabel = lastEvt ? (lastEvt.type === 'raise' ? `RAISE ${dollars(lastEvt.amount)}`
-      : lastEvt.type === 'call'  ? `CALL ${dollars(lastEvt.amount)}`
-      : lastEvt.type === 'fold'  ? 'FOLD'
-      : 'CHECK') : '';
+    const lastLabel = lastEvt ? ({ raise: `RAISE ${dollars(lastEvt.amount)}`, call: `CALL ${dollars(lastEvt.amount)}`, fold: 'FOLD', check: 'CHECK' })[lastEvt.type] : '';
+    const isToAct = !hand.finished && hand.toActIdx === i;
     const isBtn = hand.buttonIndex === i;
-    const card = document.createElement('div');
-    card.className = 'opp-card'
+    const isSB = hand.sbIdx === i;
+    const isBB = hand.bbIdx === i;
+    const pip = isBtn ? 'BTN' : isSB ? 'SB' : isBB ? 'BB' : null;
+    const el = document.createElement('div');
+    el.className = 'felt-seat'
       + (seat.folded ? ' folded' : '')
       + (isToAct ? ' to-act' : '')
-      + (isWinner ? ' winner' : '')
+      + (seat.bet > 0 ? ' has-bet' : '')
       + (lastEvt ? ' acted' : '');
-    card.style.setProperty('--portrait-tint', seat.portraitTint || '#3a2a1a');
-    card.innerHTML = `
-      <div class="opp-avatar">${initials}</div>
-      <div class="opp-info">
-        <span class="opp-name">${seat.name}</span>
-        <span class="opp-label">${oppDef.label || ''}</span>
-      </div>
-      <div class="opp-chips">
-        <span class="chips">${dollars(seat.stack)}</span>
-        <span class="bet">${seat.bet > 0 ? dollars(seat.bet) : ''}</span>
-      </div>
-      ${isBtn ? '<div class="btn-pip">BTN</div>' : ''}
-      ${lastEvt ? `<div class="last-action">${lastLabel}</div>` : ''}
+    el.dataset.pos = pos + 1;
+    el.dataset.seatIdx = i;
+    el.innerHTML = `
+      ${pip ? `<div class="seat-btn-pip">${pip}</div>` : ''}
+      <div class="seat-name">${seat.name}</div>
+      <div class="seat-cards">${seat.folded ? '' : '<div class="seat-card"></div><div class="seat-card"></div>'}</div>
+      <div class="seat-stack">${dollars(seat.stack)}</div>
+      <div class="seat-bet">${seat.bet > 0 ? dollars(seat.bet) : ''}</div>
+      ${lastEvt ? `<div class="seat-last-action">${lastLabel}</div>` : ''}
     `;
-    stack.appendChild(card);
+    el.addEventListener('click', () => setFocusedOpp(i));
+    felt.appendChild(el);
   });
+}
+
+function setFocusedOpp(idx) {
+  if (!state.session) return;
+  state.session.focusedOppIdx = idx;
+  renderFocusedOppNamecard();
+}
+
+function renderFocusedOppNamecard() {
+  if (!isMultiOpp()) return;
+  const idx = state.session.focusedOppIdx;
+  if (idx == null || !hand) return;
+  const sessionSeat = state.session.seats[idx];
+  if (!sessionSeat) return;
+  const oppDef = D.OPPONENTS[sessionSeat.opponentId] || {};
+  const initials = sessionSeat.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
+  const nc = $('#opp-namecard');
+  if (nc) nc.style.setProperty('--portrait-tint', sessionSeat.portraitTint || '#3a2a1a');
+  const initEl = $('#opp-namecard-initials');
+  const nameEl = $('#opp-namecard-name');
+  const labelEl = $('#opp-namecard-label');
+  if (initEl) initEl.textContent = initials;
+  if (nameEl) nameEl.textContent = sessionSeat.name;
+  if (labelEl) labelEl.textContent = oppDef.label || '';
+}
+
+function pushDialog(idx, situation) {
+  if (!isMultiOpp()) return;
+  const sessionSeat = state.session.seats[idx];
+  if (!sessionSeat) return;
+  const oppDef = D.OPPONENTS[sessionSeat.opponentId];
+  const line = D.pickDialog(oppDef, situation);
+  if (!line) return;
+  setFocusedOpp(idx);
+  const speakerEl = $('#dialog-speaker');
+  const textEl = $('#dialog-text');
+  if (speakerEl) speakerEl.textContent = sessionSeat.name;
+  if (textEl) {
+    textEl.classList.remove('fade');
+    void textEl.offsetWidth; // restart animation
+    textEl.classList.add('fade');
+    textEl.textContent = line;
+  }
 }
 
 // ---------- Opponent portrait + mood (single-opp big portrait) ---------------
@@ -935,6 +990,15 @@ function flashAIAction(action, idx) {
     const w = $('#worm-action');
     if (w) w.textContent = line;
   }
+  // Multi-opp: speaker dialog
+  const seat = state.session.seats[idx];
+  if (isMultiOpp() && seat.kind === 'opponent') {
+    const situation = action.type === 'raise' ? 'raised'
+      : action.type === 'call'  ? 'called'
+      : action.type === 'fold'  ? 'folded'
+      : 'neutral';
+    pushDialog(idx, situation);
+  }
 }
 
 // ---------- Special abilities and cheats ------------------------------------
@@ -1054,6 +1118,18 @@ function resolveHand() {
   $('#showdown-hero-name').textContent = heroSeat.best ? heroSeat.best.name : '—';
   $('#showdown-opp-name').textContent  = oppSeat.best && wentToShowdown ? `${oppSeat.name} — ${oppSeat.best.name}` : `${oppSeat.name} — Mucked`;
   sd.classList.remove('hidden');
+  // Multi-opp: winner says their line, focus the relevant villain
+  if (isMultiOpp()) {
+    if (heroWon) {
+      // Have the displayed villain react to losing
+      if (villainPick.s.kind === 'opponent') pushDialog(villainPick.i, 'lost');
+    } else {
+      // Winner is non-hero — they speak
+      const winnerIdx = hand.winnerIdxs[0];
+      const winnerSeat = hand.seats[winnerIdx];
+      if (winnerSeat?.kind === 'opponent') pushDialog(winnerIdx, 'won');
+    }
+  }
   $('#next-hand-btn').onclick = () => {
     if (state.session.stacks[heroIdx()] <= 0) return endSession();
     startNewHand(false);

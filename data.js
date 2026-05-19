@@ -96,6 +96,17 @@ const OPPONENTS = {
     portraitDir: 'joey/',
     portraitMoods: ['neutral','confident','uncertain','suspicious','resigned','thinking','anxious','observing','angry','defeated'],
     profile: { competence: 0.3, aggression: 0.3, bluff: 0.06 },
+    dialog: {
+      hand_start: ['So we play again, McDermott.', 'New deal. New problems.', 'Long shift tonight.'],
+      strong:    ['Sleep on it, kid. There\'s the door.', 'You\'re catching me on a good one.'],
+      weak:      ['Maybe I shoulda stayed at the deli.', 'These cards don\'t love me.'],
+      neutral:   ['You been at this long, McDermott?', 'My back is killing me.'],
+      raised:    ['Try me.', 'I\'ll bump it.'],
+      called:    ['Sure, sure. I\'ll see it.'],
+      folded:    ['I got a wife and three kids. Take it.', 'Not this one.'],
+      won:       ['Sometimes the cards just love an old man.', 'I needed that.'],
+      lost:      ['Ay. You got me good.', 'Eh. Tomorrow\'s another night.'],
+    },
     tells: [
       { strength: 'strong', text: 'He stares at the board. Doesn\'t blink. Hands flat on the felt.' },
       { strength: 'strong', text: 'A small smile pulls at the corner of his mouth before he hides it.' },
@@ -109,6 +120,16 @@ const OPPONENTS = {
     label: 'Off-duty homicide, 27 years on the job',
     portraitTint: '#3a4a3a',
     profile: { competence: 0.78, aggression: 0.55, bluff: 0.18 },
+    dialog: {
+      hand_start: ['Let\'s see what you got tonight, son.', 'Fresh deck. Same liars.'],
+      strong:    ['I\'ve put away tougher liars than you, son.', 'Don\'t do anything stupid.'],
+      weak:      ['Hmph. Get on with it.', 'Move it along.'],
+      raised:    ['Let\'s see how brave you really are.', 'I\'ll raise.'],
+      called:    ['I\'ll see.', 'Call.'],
+      folded:    ['Not tonight.', 'Nope.'],
+      won:       ['Like taking it from a perp\'s pocket.', 'Tough night for you, kid.'],
+      lost:      ['Hmph. Well played, son.', 'You earned that one.'],
+    },
     tells: [
       { strength: 'strong', text: 'He sets his coffee mug down with a deliberate, careful click.' },
       { strength: 'strong', text: 'His eyes settle, half-lidded. The look he gives suspects in the box.' },
@@ -122,6 +143,16 @@ const OPPONENTS = {
     label: 'Narcotics. Hates losing.',
     portraitTint: '#4a3a2a',
     profile: { competence: 0.6, aggression: 0.78, bluff: 0.3 },
+    dialog: {
+      hand_start: ['C\'mon, hurry up.', 'New hand. Let\'s go.'],
+      strong:    ['Wanna run a tab on this one too?', 'You\'re cooked.'],
+      weak:      ['Quit stalling. We ain\'t got all night.', 'Make the call, kid.'],
+      raised:    ['Push some chips, McDermott. Show me.', 'Raise.'],
+      called:    ['Yeah, I\'m in.'],
+      folded:    ['Whatever. Next.', 'Pass.'],
+      won:       ['That\'s how we do it on the street.', 'You owe me, kid.'],
+      lost:      ['You got lucky.', 'Damn.'],
+    },
     tells: [
       { strength: 'strong', text: 'Torres goes quiet. The man can\'t shut up when he\'s got air.' },
       { strength: 'weak',   text: 'A flurry of jokes. He\'s building cover.' },
@@ -132,6 +163,16 @@ const OPPONENTS = {
     label: 'Rookie. Plays scared.',
     portraitTint: '#2a3a4a',
     profile: { competence: 0.35, aggression: 0.22, bluff: 0.04 },
+    dialog: {
+      hand_start: ['Uh — okay, ready.', 'Deal me in.'],
+      strong:    ['Uh, I think... yeah, yeah I\'ll bet.', 'I... I got something.'],
+      weak:      ['Maybe... maybe I should...', 'I dunno.'],
+      raised:    ['Sorry, was that too much?', 'Raise. I think.'],
+      called:    ['Call.', 'O-okay.'],
+      folded:    ['I... I\'m out.', 'No thanks.'],
+      won:       ['I won? Really?', 'Holy — sorry, holy moly.'],
+      lost:      ['Oh.', 'Th-that was a lot.'],
+    },
     tells: [
       { strength: 'strong', text: 'Donovan finally relaxes his shoulders. He\'s got something.' },
       { strength: 'weak',   text: 'He folds his arms tight. He\'s already folding the cards in his head.' },
@@ -142,6 +183,16 @@ const OPPONENTS = {
     label: 'Tournament regular. Senior brass.',
     portraitTint: '#3a3a3a',
     profile: { competence: 0.82, aggression: 0.5, bluff: 0.16 },
+    dialog: {
+      hand_start: ['Deal.', 'Let\'s see it.'],
+      strong:    ['Carefully now, McDermott.', 'Mind the pot.'],
+      weak:      ['Hmm.', 'Patience.'],
+      raised:    ['Pressure check, gentlemen.', 'Raise.'],
+      called:    ['I\'ll see.'],
+      folded:    ['Out.', 'No.'],
+      won:       ['Discipline pays.', 'Good hand.'],
+      lost:      ['Well played.', 'Hmph.'],
+    },
     tells: [
       { strength: 'strong', text: 'Ortiz takes his time with the chip stack. Stacking is meditation.' },
       { strength: 'weak',   text: 'A subtle exhale. The captain doesn\'t like being on the back foot.' },
@@ -152,6 +203,16 @@ const OPPONENTS = {
     label: 'Civil bench. Cold operator.',
     portraitTint: '#3a2a3a',
     profile: { competence: 0.88, aggression: 0.42, bluff: 0.1 },
+    dialog: {
+      hand_start: ['Proceed.', 'Order. Let us begin.'],
+      strong:    ['I\'ll see your tell, son.', 'The verdict is in.'],
+      weak:      ['I have all night.', 'Continue.'],
+      raised:    ['The court raises.', 'Raise.'],
+      called:    ['Sustained.'],
+      folded:    ['Dismissed.', 'I withdraw.'],
+      won:       ['Adjourned.', 'Case closed.'],
+      lost:      ['Curious.', 'Noted.'],
+    },
     tells: [
       { strength: 'strong', text: 'The judge tents his fingers. The verdict is in his hand.' },
       { strength: 'weak',   text: 'He removes his glasses. Wipes them. Buys himself time.' },
@@ -162,6 +223,16 @@ const OPPONENTS = {
     label: 'Hedge fund, two ex-wives, no fear',
     portraitTint: '#7a5a2a',
     profile: { competence: 0.45, aggression: 0.78, bluff: 0.32 },
+    dialog: {
+      hand_start: ['Let\'s gamble, gentlemen.', 'I\'ve got a flight at six.'],
+      strong:    ['Daddy taught me well.', 'You really wanna find out?'],
+      weak:      ['Don\'t even bother, McDermott.', 'I\'m practically asleep.'],
+      raised:    ['Pocket change.', 'Make it interesting.'],
+      called:    ['Sure, why not.'],
+      folded:    ['Boring.', 'Pass.'],
+      won:       ['Easy money.', 'Cheers.'],
+      lost:      ['Whatever. It\'s petty cash.', 'Lucky river.'],
+    },
     tells: [
       { strength: 'strong', text: 'He leans back, drapes an arm over the chair. Crocodile, sunning itself.' },
       { strength: 'strong', text: 'He pushes the chips forward gently. Like a tip he wants you to notice.' },
@@ -175,6 +246,16 @@ const OPPONENTS = {
     label: 'Broker. Reads the room. Slow.',
     portraitTint: '#5a4a2a',
     profile: { competence: 0.7, aggression: 0.5, bluff: 0.2 },
+    dialog: {
+      hand_start: ['Markets are open.', 'Let\'s see the spread.'],
+      strong:    ['I like the position.', 'Long this one.'],
+      weak:      ['Hedge accordingly.', 'I\'m underwater.'],
+      raised:    ['I\'ll size up.', 'Increase exposure.'],
+      called:    ['I\'ll see it through.'],
+      folded:    ['Take the loss. Move on.', 'Out.'],
+      won:       ['Returns secured.', 'A good quarter.'],
+      lost:      ['Bad timing.', 'Acceptable loss.'],
+    },
     tells: [
       { strength: 'strong', text: 'Kessler checks his watch. Twice.' },
       { strength: 'weak',   text: 'He pulls at his collar like the AC just died.' },
@@ -185,6 +266,16 @@ const OPPONENTS = {
     label: 'Heir, day-drinks, splashes the pot',
     portraitTint: '#7a4a4a',
     profile: { competence: 0.28, aggression: 0.82, bluff: 0.4 },
+    dialog: {
+      hand_start: ['Bartender! ... oh, deal me in.', 'Hello, fellows.'],
+      strong:    ['I rather like these.', 'Cheers to me.'],
+      weak:      ['Are these even my cards?', 'Hmm.'],
+      raised:    ['Make it spicy!', 'Up we go.'],
+      called:    ['Why not, eh?'],
+      folded:    ['Bored.', 'I\'m out, lads.'],
+      won:       ['Splendid! Another scotch!', 'Mummy will be pleased.'],
+      lost:      ['Oh, blast.', 'Whatever, it\'s nothing.'],
+    },
     tells: [
       { strength: 'strong', text: 'Bunny laughs at his own joke. He never laughs for free.' },
       { strength: 'weak',   text: 'He frowns at the cards. Slightly cross-eyed. Probably won\'t remember calling.' },
@@ -195,6 +286,16 @@ const OPPONENTS = {
     label: 'Old country money. Quiet hands.',
     portraitTint: '#553a3a',
     profile: { competence: 0.82, aggression: 0.62, bluff: 0.24 },
+    dialog: {
+      hand_start: ['Welcome, McDermott.', 'Slowly now.'],
+      strong:    ['Care to dance?', 'You came to the wrong house.'],
+      weak:      ['Patience is a virtue, no?', 'Hmph.'],
+      raised:    ['I will raise.', 'A gentle push.'],
+      called:    ['I see.', 'Yes.'],
+      folded:    ['Some other night.', 'I yield.'],
+      won:       ['You play well. Almost.', 'Cards, you know, do not lie.'],
+      lost:      ['Bravo.', 'A worthy hand.'],
+    },
     tells: [
       { strength: 'strong', text: 'He rolls a chip across his knuckles. Patient. The chip never falls.' },
       { strength: 'strong', text: 'A long exhale through the nose. The kind a man makes before pulling a trigger.' },
@@ -552,7 +653,14 @@ function classifyWormHand(hole, board) {
   return null; // we'll fall back to equity-based eval in game.js
 }
 
+function pickDialog(opp, situation) {
+  if (!opp || !opp.dialog) return null;
+  const pool = opp.dialog[situation];
+  if (!pool || !pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 window.GameData = {
   VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
-  RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand,
+  RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand, pickDialog,
 };
