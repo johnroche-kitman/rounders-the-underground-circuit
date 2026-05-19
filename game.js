@@ -87,6 +87,7 @@ function showScreen(name) {
   const screen = document.getElementById(`screen-${name}`);
   if (screen) screen.classList.add('active');
   if (name === 'map')     renderMap();
+  if (name === 'venue')   renderVenue();
   if (name === 'phone')   renderPhone();
   if (name === 'sheet')   renderSheet();
   if (name === 'vig')     renderVig();
@@ -159,20 +160,24 @@ function renderMap() {
       <div class="node-label">${v.name}${unlocked ? '' : ' [LOCKED]'}</div>
       <div class="node-tagline">${v.blurb}</div>
     `;
-    el.addEventListener('click', () => { state.selectedVenueId = v.id; renderMap(); });
+    el.addEventListener('click', () => {
+      state.selectedVenueId = v.id;
+      saveState();
+      showScreen('venue');
+    });
     container.appendChild(el);
   });
 
   // Selected node already gets a yellow ring as the "you are here" marker.
+}
 
-  // Detail panel
-  const panel = $('#venue-panel');
-  if (!state.selectedVenueId) {
-    panel.classList.add('empty');
-    panel.innerHTML = '<em>Select a venue node above to inspect.</em>';
-    return;
-  }
+function renderVenue() {
+  updateStatusBar();
+  const page = $('#venue-page');
+  if (!page) return;
+  if (!state.selectedVenueId) { showScreen('map'); return; }
   const v = D.VENUES.find(x => x.id === state.selectedVenueId);
+  if (!v) { showScreen('map'); return; }
   const unlocked = isUnlocked(v);
   const competenceDots = Array.from({ length: 5 }, (_, i) =>
     `<span class="${i < v.competence ? 'on' : ''}"></span>`).join('');
@@ -183,51 +188,65 @@ function renderMap() {
     : v.cheatingRisk === 'high'
     ? 'HIGH — Sharp surveillance, heavy penalties.'
     : 'EXTREME — Cops at the table. Instant ban + arrest.';
-  panel.classList.remove('empty');
-  const heroHtml = v.interiorImage
-    ? `<div class="venue-hero">
-         <img src="${v.interiorImage}" alt="" />
-         <div class="venue-hero-sub">${v.gameType} · ${dollars(v.buyIn)} buy-in</div>
-         <div class="venue-hero-title">${v.name}</div>
-       </div>`
+
+  const heroImage = v.interiorImage
+    ? `<img src="${v.interiorImage}" alt="" />`
     : '';
-  panel.innerHTML = `
-    ${heroHtml}
-    <div class="venue-panel-grid">
-      <div class="panel-header">
-        ${v.interiorImage ? '' : `<h2>${v.name}</h2>`}
-        <div class="panel-sub">${v.blurb}</div>
+
+  page.innerHTML = `
+    <div class="venue-page-hero">
+      <button class="venue-page-back" id="venue-back-btn">&larr; Back to map</button>
+      ${heroImage}
+      <div class="venue-page-hero-text">
+        <div class="meta">${v.gameType} · ${dollars(v.buyIn)} buy-in</div>
+        <h1>${v.name}</h1>
+        <div class="blurb">${v.blurb}</div>
       </div>
+    </div>
+    <div class="venue-page-body">
       <div class="panel-block">
+        <div class="block-title">Money</div>
         <div class="panel-stat"><span class="lbl">Game Type</span> <span class="val">${v.gameType}</span></div>
         <div class="panel-stat"><span class="lbl">Buy-In</span> <span class="val">${dollars(v.buyIn)}</span></div>
         <div class="panel-stat"><span class="lbl">Payout</span> <span class="val good">${v.payoutHint}</span></div>
         <div class="panel-stat"><span class="lbl">Respect</span> <span class="val amber">${v.rpHint}</span></div>
       </div>
       <div class="panel-block">
+        <div class="block-title">Table</div>
+        <div class="panel-stat"><span class="lbl">Players</span> <span class="val">${(v.opponents || [v.opponentId]).length} NPCs ${v.partnerAvailable ? '· partner allowed' : ''}</span></div>
         <div class="panel-stat"><span class="lbl">Competence</span> <span class="val"><span class="competence-dots">${competenceDots}</span></span></div>
         <div class="panel-stat"><span class="lbl">Cheating Risk</span> <span class="val ${riskClass}">${riskText.split(' — ')[0]}</span></div>
         <div class="panel-stat"><span class="lbl">Partner</span> <span class="val">${v.partnerAvailable ? 'Available' : (v.partnerNote || 'Unavailable')}</span></div>
-        <div class="panel-stat"><span class="lbl">Unlock</span> <span class="val">${unlocked ? 'Open' : unlockText(v)}</span></div>
       </div>
-      <div class="panel-actions">
+      <div class="panel-block">
+        <div class="block-title">Status</div>
+        <div class="panel-stat"><span class="lbl">Unlock</span> <span class="val">${unlocked ? 'Open' : unlockText(v)}</span></div>
+        <div class="panel-stat"><span class="lbl">Your Cash</span> <span class="val ${state.cash >= v.buyIn ? 'good' : 'warn'}">${dollars(state.cash)}</span></div>
+        <div class="panel-stat"><span class="lbl">Your Respect</span> <span class="val amber">${state.rp} RP</span></div>
+        <div class="panel-stat"><span class="lbl">Loan</span> <span class="val ${state.loan ? 'warn' : ''}">${state.loan ? `Owe ${dollars(state.loan.total)}` : 'None'}</span></div>
+      </div>
+      <div class="venue-page-actions">
         ${unlocked
           ? `<button class="btn primary" id="enter-venue">${state.cash < v.buyIn ? 'NOT ENOUGH CASH' : 'Enter Venue'}</button>
-             ${v.partnerAvailable ? '<button class="btn" id="recruit-partner">Recruit Partner</button>' : ''}`
-          : `<button class="btn" disabled>${unlockText(v)}</button>`}
+             ${v.partnerAvailable ? '<button class="btn" id="recruit-partner">Recruit Partner</button>' : '<button class="btn ghost" disabled>No partner allowed here</button>'}`
+          : `<button class="btn ghost" disabled>${unlockText(v)}</button>
+             <button class="btn ghost" disabled>—</button>`}
+        <button class="btn" id="venue-back-btn-2">Back to map</button>
       </div>
     </div>
   `;
-  const enterBtn = $('#enter-venue', panel);
+  const enterBtn = $('#enter-venue', page);
   if (enterBtn) {
     enterBtn.disabled = state.cash < v.buyIn;
     enterBtn.addEventListener('click', () => { state.partnerId = null; enterVenue(v); });
   }
-  const recruitBtn = $('#recruit-partner', panel);
+  const recruitBtn = $('#recruit-partner', page);
   if (recruitBtn) {
     recruitBtn.disabled = state.cash < v.buyIn;
     recruitBtn.addEventListener('click', () => openTeamUp(v));
   }
+  page.querySelector('#venue-back-btn').addEventListener('click', () => showScreen('map'));
+  page.querySelector('#venue-back-btn-2')?.addEventListener('click', () => showScreen('map'));
 }
 
 function isUnlocked(v) {
@@ -1442,8 +1461,6 @@ function init() {
     if (e.key === 'r' || e.key === 'R') readIntent();
   });
   showScreen('map');
-  // Friendly default selection so the panel isn't blank on first load
-  if (!state.selectedVenueId) { state.selectedVenueId = 'deli'; renderMap(); }
   // ?stage=NAME for screenshot / deep-link demos.
   applyStageParam();
 }
