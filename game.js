@@ -29,7 +29,7 @@ function defaultState() {
     sleeveCard: null,                      // mucked card available next hand
     suspicion: 0,
     messages: D.PHONE_MESSAGES.map(m => ({ ...m })),
-    psyche: { calculator: 4, wire: 3, shark: 2, sweat: 5 },
+    psyche: { calculator: 4, wire: 3, shark: 2, sweat: 5, disciple: 3 },
     physical: { sleightOfHand: 2 },
     perks: ['Johnny Chan\'s Blessing'],
     skillPoints: 2,
@@ -293,6 +293,16 @@ function enterVenue(venue) {
   const opponent = D.OPPONENTS[venue.opponentId];
   const isTournament = venue.gameType === 'Tournament';
   const startStack = isTournament ? venue.tournamentStartingStack : venue.buyIn;
+
+  // Build seat configuration: hero is always seat 0.
+  // If partner SITS at the table (e.g. Worm), insert as seat 1 between hero and opponent.
+  const partnerSits = partner && partner.sitsAtTable !== false && partner.profile;
+  const seats = [{ id: 'player', name: 'Mike', kind: 'hero' }];
+  if (partnerSits) {
+    seats.push({ id: 'worm', name: partner.shortName || 'Worm', kind: 'partner', profile: partner.profile });
+  }
+  seats.push({ id: 'opp', name: opponent.name, kind: 'opponent', profile: opponent.profile });
+
   state.session = {
     venueId: venue.id,
     opponentId: venue.opponentId,
@@ -301,8 +311,8 @@ function enterVenue(venue) {
     startStack,
     buyIn: venue.buyIn,
     startingRP: state.rp,
-    playerStack: startStack,
-    oppStack: startStack,
+    seats,
+    stacks: seats.map(() => startStack),
     suspicion: partner ? partner.suspicionFloor : 0,
     handsPlayed: 0,
     cleanShowdownsWon: 0,
@@ -310,16 +320,26 @@ function enterVenue(venue) {
     bestHandCat: 0,
     netFromCheats: 0,
     busted: false,
+    wormMuted: false,
+    wormLastSignal: null,
   };
   state.focus = Math.min(100, state.focus + 10);
   $('#opp-portrait').style.setProperty('--portrait-tint', opponent.portraitTint);
   $('#opp-name').textContent = opponent.name;
-  setupPortraitArea(opponent);
+  setupPortraitArea($('#opp-face'), opponent);
+  // Partner portrait & panel
+  setupWormPanel(partnerSits ? partner : null);
   showScreen('poker');
   updateStatusBar();
   startNewHand(true);
   saveState();
 }
+
+// Convenience: indices for hero / partner / opponent given current session
+function heroIdx()    { return 0; }
+function partnerIdx() { return state.session.seats.findIndex(s => s.kind === 'partner'); }
+function opponentIdx(){ return state.session.seats.findIndex(s => s.kind === 'opponent'); }
+function isHeroTurn() { return hand && hand.toActIdx === 0; }
 
 let hand = null;
 let raiseAmount = 0;
@@ -327,44 +347,62 @@ let pendingShowdown = false;
 
 function startNewHand(firstHand) {
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  // Tournament: bust = session over. KO opp = win the prize.
+  const oIdx = opponentIdx();
+
+  // Tournament: hero bust = over, opp bust = win.
   if (state.session.isTournament) {
-    if (state.session.playerStack <= 0) {
+    if (state.session.stacks[heroIdx()] <= 0) {
       state.session.busted = true;
       return endSession();
     }
-    if (state.session.oppStack <= 0) {
+    if (state.session.stacks[oIdx] <= 0) {
       state.session.tournamentWin = true;
       return endSession();
     }
   } else {
-    // Cash game: re-buy from cash if busted (and have funds)
-    if (state.session.playerStack <= 0) {
+    // Cash game: re-buy hero from cash if busted (and able)
+    if (state.session.stacks[heroIdx()] <= 0) {
       if (state.cash >= venue.buyIn) {
         state.cash -= venue.buyIn;
-        state.session.playerStack = venue.buyIn;
+        state.session.stacks[heroIdx()] = venue.buyIn;
       } else {
         state.session.busted = true;
         return endSession();
       }
     }
-    if (state.session.oppStack <= 0) {
-      state.session.oppStack = venue.buyIn;
+    if (state.session.stacks[oIdx] <= 0) {
+      state.session.stacks[oIdx] = venue.buyIn;
       state.rp += 30;
       setBanner('KO — opponent re-buys. +30 RP.', 'good');
     }
+    // Worm: re-buys from his own implied bankroll silently
+    const pIdx = partnerIdx();
+    if (pIdx >= 0 && state.session.stacks[pIdx] <= 0) {
+      state.session.stacks[pIdx] = venue.buyIn;
+    }
   }
+
   state.session.handsPlayed++;
   state.handsPlayedTotal++;
-  const playerOnButton = (state.session.handsPlayed % 2) === 1;
+
+  // Build players[] for the engine. Stacks are pulled from session.
+  const players = state.session.seats.map((s, i) => ({
+    id: s.id,
+    name: s.name,
+    profile: s.profile || null,
+    stack: state.session.stacks[i],
+  }));
+  // Button rotates each hand around the table.
+  const buttonIndex = (state.session.handsPlayed - 1) % players.length;
+
   hand = P.createHand({
-    playerStack: state.session.playerStack,
-    oppStack: state.session.oppStack,
+    players,
     smallBlind: venue.blinds.small,
     bigBlind: venue.blinds.big,
-    playerOnButton,
+    buttonIndex,
     sleeveCard: state.sleeveCard,
   });
+
   if (state.sleeveCard) {
     state.sleeveCard = null;
     pushIntrusion('SHARK', 'You slip the card down. Mike — that\'s ours now.');
@@ -375,19 +413,28 @@ function startNewHand(firstHand) {
   $('#intrusions').innerHTML = '';
   fireIntrusionsForState();
   renderFight();
-  // If AI is first to act, run AI.
+  // Worm signals at start of hand
+  fireWormSignal('preflop');
   scheduleAITurn();
+}
+
+function syncStacksFromHand() {
+  if (!hand || !state.session) return;
+  hand.seats.forEach((s, i) => { state.session.stacks[i] = s.stack; });
 }
 
 function renderFight() {
   if (!hand) return;
-  const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  $('#hero-chips-label').textContent = dollars(hand.playerStack);
-  $('#opp-chips-label').textContent = dollars(hand.oppStack);
-  // Bars scale to starting stack
   const startStack = state.session.startStack;
-  $('#hero-chips-bar').style.width = Math.max(0, Math.min(100, (hand.playerStack / startStack) * 100)) + '%';
-  $('#opp-chips-bar').style.width  = Math.max(0, Math.min(100, (hand.oppStack / startStack) * 100)) + '%';
+  const oIdx = opponentIdx();
+  const pIdx = partnerIdx();
+
+  // Hero + opponent chip bars
+  $('#hero-chips-label').textContent = dollars(hand.seats[heroIdx()].stack);
+  $('#opp-chips-label').textContent = dollars(hand.seats[oIdx].stack);
+  $('#hero-chips-bar').style.width = Math.max(0, Math.min(100, (hand.seats[heroIdx()].stack / startStack) * 100)) + '%';
+  $('#opp-chips-bar').style.width  = Math.max(0, Math.min(100, (hand.seats[oIdx].stack / startStack) * 100)) + '%';
+
   $('#pot-amount').textContent = dollars(hand.pot);
   $('#hand-status').textContent = streetLabel(hand.street);
   $('#focus-fill').style.width = state.focus + '%';
@@ -395,36 +442,27 @@ function renderFight() {
   $('#suspicion-fill').style.width = Math.round(state.session.suspicion * 100) + '%';
   $('#suspicion-pct').textContent = Math.round(state.session.suspicion * 100) + '%';
 
-  // Cards
+  // Community + hero hole cards
   $('#community-row').innerHTML = '';
   for (let i = 0; i < 5; i++) {
     if (hand.board[i]) $('#community-row').appendChild(makeCardEl(hand.board[i]));
     else $('#community-row').appendChild(makePlaceholderEl());
   }
   $('#hole-row').innerHTML = '';
-  hand.heroHole.forEach(c => $('#hole-row').appendChild(makeCardEl(c)));
+  hand.seats[heroIdx()].hole.forEach(c => $('#hole-row').appendChild(makeCardEl(c)));
 
-  // Partner signal
-  if (state.session.partnerId === 'worm') {
-    $('#partner-rail-header').style.display = 'block';
-    const ps = $('#partner-signal');
-    ps.style.display = 'block';
-    const oppPair = hand.oppHole[0].rank === hand.oppHole[1].rank;
-    const oppSuited = hand.oppHole[0].suit === hand.oppHole[1].suit;
-    const high = Math.max(hand.oppHole[0].rank, hand.oppHole[1].rank);
-    let signal = 'Worm taps his glass twice. Nothing dangerous.';
-    if (oppPair) signal = `Worm coughs once. He\'s holding a pair${high >= 10 ? ' — a big one' : ''}.`;
-    else if (oppSuited && high >= 12) signal = 'Worm runs a finger across his eyebrow. Suited paint.';
-    else if (high >= 13) signal = 'Worm tugs his cuff. He\'s got an Ace or King.';
-    ps.textContent = signal;
-  } else {
-    $('#partner-rail-header').style.display = 'none';
-    $('#partner-signal').style.display = 'none';
-  }
+  // Worm panel updates
+  renderWormPanel();
+
+  // Visual active-seat indicator on opponent portrait
+  $('#opp-portrait').classList.toggle('to-act', hand.toActIdx === oIdx);
+  const wormPortrait = $('#worm-portrait');
+  if (wormPortrait) wormPortrait.classList.toggle('to-act', pIdx >= 0 && hand.toActIdx === pIdx);
 
   renderActionBar();
   renderTellFeed();
   refreshOpponentMood();
+  refreshWormMood();
 }
 
 function streetLabel(s) {
@@ -454,10 +492,10 @@ function makePlaceholderEl() {
 function renderActionBar() {
   const bar = $('#action-bar');
   bar.innerHTML = '';
-  if (hand.finished || hand.toAct !== 'player') return;
+  if (hand.finished || !isHeroTurn()) return;
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  const acts = P.legalActions(hand);
-  const owed = P.callAmount(hand, 'player');
+  const acts = P.legalActions(hand, 0);
+  const owed = P.callAmount(hand, 0);
 
   acts.forEach((a, i) => {
     if (a.type === 'raise') {
@@ -518,38 +556,94 @@ function renderActionBar() {
 
 // ---------- Opponent portrait + mood -----------------------------------------
 
-function setupPortraitArea(opponent) {
-  const face = $('#opp-face');
+function setupPortraitArea(face, character) {
   face.innerHTML = '';
-  if (opponent.portraitDir && opponent.portraitMoods) {
-    // Preload all moods so swaps are instant
-    opponent.portraitMoods.forEach(mood => {
+  if (character && character.portraitDir && character.portraitMoods) {
+    character.portraitMoods.forEach(mood => {
       const img = document.createElement('img');
       img.className = 'face-mood';
       img.dataset.mood = mood;
-      img.src = opponent.portraitDir + mood + '.jpg';
+      img.src = character.portraitDir + mood + '.jpg';
       img.alt = '';
       face.appendChild(img);
     });
-    setMood('neutral');
-  } else {
-    // Fallback: render initials
-    face.textContent = opponent.name.split(' ').map(s => s[0]).join('').slice(0, 2);
+    setMoodOn(face, 'neutral');
+  } else if (character) {
+    face.textContent = character.name.split(' ').map(s => s[0]).join('').slice(0, 2);
     face.style.fontSize = '';
   }
 }
 
-function setMood(mood) {
-  const imgs = $$('#opp-face img.face-mood');
+function setMoodOn(face, mood) {
+  const imgs = face.querySelectorAll('img.face-mood');
   if (!imgs.length) return;
   imgs.forEach(img => img.classList.toggle('active', img.dataset.mood === mood));
 }
+function setMood(mood)     { setMoodOn($('#opp-face'), mood); }
+function setWormMood(mood) { const f = $('#worm-face'); if (f) setMoodOn(f, mood); }
+
+// ---------- Worm panel + signaling -----------------------------------------
+
+function setupWormPanel(partner) {
+  const panel = $('#worm-panel');
+  if (!panel) return;
+  if (!partner) { panel.style.display = 'none'; return; }
+  panel.style.display = 'flex';
+  $('#worm-name').textContent = partner.shortName || 'Worm';
+  setupPortraitArea($('#worm-face'), partner);
+  $('#worm-action').textContent = '';
+  $('#worm-signal-text').textContent = '';
+  $('#worm-stop-btn').disabled = state.session.wormMuted;
+  $('#worm-stop-btn').textContent = state.session.wormMuted ? 'Signals muted' : 'Tell him to cool it';
+  $('#worm-stop-btn').onclick = () => {
+    state.session.wormMuted = true;
+    $('#worm-stop-btn').disabled = true;
+    $('#worm-stop-btn').textContent = 'Signals muted';
+    $('#worm-signal-text').textContent = 'You catch his eye. He nods. No more signals.';
+    saveState();
+  };
+}
+
+function renderWormPanel() {
+  const pIdx = partnerIdx();
+  if (pIdx < 0 || !hand) return;
+  const stack = hand.seats[pIdx].stack;
+  $('#worm-stack').textContent = dollars(stack);
+}
+
+function fireWormSignal(streetName) {
+  const pIdx = partnerIdx();
+  if (pIdx < 0 || !hand) return;
+  if (state.session.wormMuted) return;
+  const partner = D.PARTNERS[state.session.partnerId];
+  const worm = hand.seats[pIdx];
+
+  // Determine Worm's hand strength bucket
+  let bucket;
+  if (streetName === 'preflop' || hand.board.length === 0) {
+    bucket = D.classifyWormHand(worm.hole, []);
+  } else {
+    const eq = P.estimateEquity(worm.hole, hand.board, 80);
+    if (eq > 0.7) bucket = 'monster';
+    else if (eq > 0.55) bucket = 'strong';
+    else if (eq > 0.4) bucket = 'decent';
+    else if (eq > 0.25) bucket = 'draw';
+    else if (eq > 0.12) bucket = 'weak';
+    else bucket = 'air';
+  }
+  const sig = D.WORM_SIGNALS[bucket] || D.WORM_SIGNALS.weak;
+  state.session.wormLastSignal = sig;
+  state.session.suspicion = Math.min(1, state.session.suspicion + (partner.suspicionPerSignal || 0));
+  $('#worm-signal-text').textContent = sig.text;
+  setWormMood(sig.mood);
+  renderFight();
+}
 
 // Mood picker — driven by live hand state, suspicion, last opp action, equity.
-let _moodEquityCache = null;
 function refreshOpponentMood() {
   const opp = D.OPPONENTS[state.session?.opponentId];
   if (!opp || !opp.portraitMoods) return;
+  const oIdx = opponentIdx();
 
   // Suspicion takes precedence
   const susp = state.session.suspicion || 0;
@@ -558,51 +652,58 @@ function refreshOpponentMood() {
 
   if (!hand) return setMood('neutral');
 
-  // Hand finished
   if (hand.finished) {
-    if (hand.winner === 'opp') return setMood('confident');
-    if (hand.winner === 'player') {
-      const lastOpp = [...hand.history].reverse().find(h => h.who === 'opp');
-      if (lastOpp && lastOpp.type === 'fold') return setMood('resigned');
-      return setMood('defeated');
-    }
-    return setMood('neutral');
+    if (hand.winnerIdxs.includes(oIdx)) return setMood('confident');
+    const lastOpp = [...hand.history].reverse().find(h => h.idx === oIdx);
+    if (lastOpp && lastOpp.type === 'fold') return setMood('resigned');
+    return setMood('defeated');
   }
 
-  // Estimate opp equity (cheap monte-carlo)
-  const equity = P.estimateEquity(hand.oppHole, hand.board, 80);
-  _moodEquityCache = equity;
+  const oppSeat = hand.seats[oIdx];
+  const equity = P.estimateEquity(oppSeat.hole, hand.board, 80);
 
-  // React to opp's most recent action this street
-  const lastOpp = [...hand.history].reverse().find(h => h.who === 'opp' && h.street === hand.street);
+  const lastOpp = [...hand.history].reverse().find(h => h.idx === oIdx && h.street === hand.street);
   if (lastOpp) {
-    if (lastOpp.type === 'raise') {
-      return setMood(equity > 0.55 ? 'confident' : 'observing');
-    }
-    if (lastOpp.type === 'fold') return setMood('resigned');
+    if (lastOpp.type === 'raise') return setMood(equity > 0.55 ? 'confident' : 'observing');
+    if (lastOpp.type === 'fold')  return setMood('resigned');
     if (lastOpp.type === 'call' && lastOpp.amount > hand.bigBlind * 4) {
       return setMood(equity > 0.5 ? 'observing' : 'anxious');
     }
   }
 
-  if (hand.toAct === 'opp') return setMood('thinking');
+  if (hand.toActIdx === oIdx) return setMood('thinking');
 
-  // Player to act; Joey reacts to the situation passively.
   if (equity > 0.7)  return setMood('confident');
   if (equity > 0.45) return setMood('observing');
   if (equity > 0.25) return setMood('uncertain');
-  return 'anxious', setMood('anxious');
+  return setMood('anxious');
+}
+
+// Worm mood reacts to his own hand strength and signaling state.
+function refreshWormMood() {
+  const pIdx = partnerIdx();
+  if (pIdx < 0) return;
+  const partner = D.PARTNERS[state.session.partnerId];
+  if (!partner.portraitMoods) return;
+  if (!hand) return setWormMood('neutral');
+  if (hand.finished) {
+    if (hand.winnerIdxs.includes(pIdx)) return setWormMood('happy');
+    const last = [...hand.history].reverse().find(h => h.idx === pIdx);
+    if (last && last.type === 'fold') return setWormMood('resigned');
+    return setWormMood('focused');
+  }
+  if (state.session.suspicion >= 0.6) return setWormMood('shocked');
+  if (hand.toActIdx === pIdx) return setWormMood('focused');
+  // Match the last signal pose if we just signaled
+  if (state.session.wormLastSignal && !state.session.wormMuted) {
+    return setWormMood(state.session.wormLastSignal.mood);
+  }
+  return setWormMood('waiting');
 }
 
 function renderTellFeed() {
-  const opp = D.OPPONENTS[state.session.opponentId];
-  // Wire stat affects reliability of the tell read
-  const tell = P.aiTell(hand, opp.profile);
-  if (tell) {
-    $('#tell-text').textContent = tell.text;
-  } else {
-    $('#tell-text').textContent = 'He waits. Stone-faced.';
-  }
+  const tell = P.aiTell(hand, opponentIdx());
+  $('#tell-text').textContent = tell ? tell.text : 'He waits. Stone-faced.';
 }
 
 // ---------- Inner monologue --------------------------------------------------
@@ -612,7 +713,8 @@ function pushIntrusion(voiceKey, text) {
   if (!voice) return;
   const klass = voiceKey === 'CALCULATOR' ? 'calc'
     : voiceKey === 'SHARK' ? 'shark'
-    : voiceKey === 'WIRE' ? 'wire' : 'sweat';
+    : voiceKey === 'WIRE' ? 'wire'
+    : voiceKey === 'DISCIPLE' ? 'disciple' : 'sweat';
   const el = document.createElement('div');
   el.className = `intrusion ${klass}`;
   el.innerHTML = `<span class="voice-name">${voice.icon}  ${voice.name}</span>${text}`;
@@ -624,39 +726,48 @@ function pushIntrusion(voiceKey, text) {
 }
 
 function fireIntrusionsForState() {
-  if (!hand || hand.toAct !== 'player') return;
-  const equity = P.estimateEquity(hand.heroHole, hand.board, 200);
-  const owed = P.callAmount(hand, 'player');
+  if (!hand || !isHeroTurn()) return;
+  const heroSeat = hand.seats[heroIdx()];
+  const equity = P.estimateEquity(heroSeat.hole, hand.board, 200);
+  const owed = P.callAmount(hand, 0);
   const potOdds = owed / (hand.pot + owed || 1);
-  const opp = D.OPPONENTS[state.session.opponentId];
-  const tell = P.aiTell(hand, opp.profile);
+  const tell = P.aiTell(hand, opponentIdx());
   const debt = state.loan ? state.loan.total : 0;
-  const ctx = { equity, owed, potOdds, pot: hand.pot, stack: hand.playerStack, debt, tell };
-
-  // Probability each voice speaks scales with its stat (0..5 → 0..1)
-  const voicesByStat = {
-    CALCULATOR: state.psyche.calculator / 5,
-    SHARK: state.psyche.shark / 5,
-    WIRE: state.psyche.wire / 5,
-    COLD_SWEAT: state.psyche.sweat / 5,
+  const ctx = {
+    equity, owed, potOdds,
+    pot: hand.pot, stack: heroSeat.stack, debt, tell,
+    heroHole: heroSeat.hole, board: hand.board,
+    heroBest: heroSeat.best || (hand.street === 'river' ? P.bestFiveOfSeven([...heroSeat.hole, ...hand.board]) : null),
+    street: hand.street,
   };
-  // Pick 1–2 voices that feel relevant given context
+
+  const psy = state.psyche;
+  const voicesByStat = {
+    CALCULATOR: (psy.calculator || 0) / 5,
+    SHARK:      (psy.shark      || 0) / 5,
+    WIRE:       (psy.wire       || 0) / 5,
+    COLD_SWEAT: (psy.sweat      || 0) / 5,
+    DISCIPLE:   (psy.disciple   || 0) / 5,
+  };
   const lineup = [];
   if (Math.random() < voicesByStat.CALCULATOR) lineup.push('CALCULATOR');
   if (state.loan && Math.random() < voicesByStat.COLD_SWEAT) lineup.push('COLD_SWEAT');
   else if (Math.random() < voicesByStat.COLD_SWEAT * 0.7) lineup.push('COLD_SWEAT');
   if (equity > 0.55 && Math.random() < voicesByStat.SHARK) lineup.push('SHARK');
   if (tell && Math.random() < voicesByStat.WIRE) lineup.push('WIRE');
-  // Always at least one voice during big decisions
+  // The Disciple chimes in more often pre-flop and on the river.
+  const discProb = voicesByStat.DISCIPLE * (hand.street === 'preflop' ? 0.85 : hand.street === 'river' ? 0.75 : 0.35);
+  if (Math.random() < discProb) lineup.push('DISCIPLE');
+
   if (!lineup.length) {
-    const picks = ['CALCULATOR', 'SHARK', 'WIRE', 'COLD_SWEAT'];
+    const picks = ['CALCULATOR', 'SHARK', 'WIRE', 'COLD_SWEAT', 'DISCIPLE'];
     lineup.push(picks[Math.floor(Math.random() * picks.length)]);
   }
-  // Take up to 2 with small stagger
+  // Cap at 2 voices per moment, stagger
   lineup.slice(0, 2).forEach((v, i) => {
     setTimeout(() => {
       const voice = D.VOICES[v];
-      pushIntrusion(v, voice.speak(ctx));
+      if (voice) pushIntrusion(v, voice.speak(ctx));
     }, i * 320);
   });
 }
@@ -665,42 +776,49 @@ function fireIntrusionsForState() {
 
 function playerAct(action) {
   if (!hand || hand.finished) return;
-  if (hand.toAct !== 'player') return;
+  if (!isHeroTurn()) return;
+  const prevStreet = hand.street;
   P.applyAction(hand, action);
-  state.session.playerStack = hand.playerStack;
-  state.session.oppStack = hand.oppStack;
+  syncStacksFromHand();
   if (hand.finished) return resolveHand();
+  if (hand.street !== prevStreet) fireWormSignal(hand.street);
   renderFight();
-  if (hand.toAct === 'opp') scheduleAITurn();
+  if (!isHeroTurn()) scheduleAITurn();
   else fireIntrusionsForState();
 }
 
 function scheduleAITurn() {
-  if (!hand || hand.finished || hand.toAct !== 'opp') return;
+  if (!hand || hand.finished || isHeroTurn()) return;
   renderFight();
   setTimeout(() => {
-    if (!hand || hand.finished || hand.toAct !== 'opp') return;
-    const opp = D.OPPONENTS[state.session.opponentId];
-    const action = P.aiDecide(hand, opp.profile);
+    if (!hand || hand.finished || isHeroTurn()) return;
+    const idx = hand.toActIdx;
+    const prevStreet = hand.street;
+    const action = P.aiDecide(hand, idx);
     P.applyAction(hand, action);
-    state.session.playerStack = hand.playerStack;
-    state.session.oppStack = hand.oppStack;
-    flashAIAction(action);
+    syncStacksFromHand();
+    flashAIAction(action, idx);
     if (hand.finished) return resolveHand();
+    if (hand.street !== prevStreet) fireWormSignal(hand.street);
     renderFight();
-    if (hand.toAct === 'opp') scheduleAITurn();
+    if (!isHeroTurn()) scheduleAITurn();
     else fireIntrusionsForState();
   }, 900);
 }
 
-function flashAIAction(action) {
-  const opp = D.OPPONENTS[state.session.opponentId];
+function flashAIAction(action, idx) {
+  const name = state.session.seats[idx].name;
   let line = '';
-  if (action.type === 'fold')  line = `${opp.name} folds.`;
-  if (action.type === 'check') line = `${opp.name} taps the felt.`;
-  if (action.type === 'call')  line = `${opp.name} calls ${dollars(action.amount)}.`;
-  if (action.type === 'raise') line = `${opp.name} raises ${dollars(action.amount)}.`;
-  $('#tell-text').textContent = line;
+  if (action.type === 'fold')  line = `${name} folds.`;
+  if (action.type === 'check') line = `${name} taps the felt.`;
+  if (action.type === 'call')  line = `${name} calls ${dollars(action.amount)}.`;
+  if (action.type === 'raise') line = `${name} raises ${dollars(action.amount)}.`;
+  // Show opp actions in the tell feed; Worm actions in the Worm signal line.
+  if (idx === opponentIdx()) $('#tell-text').textContent = line;
+  if (idx === partnerIdx()) {
+    const w = $('#worm-action');
+    if (w) w.textContent = line;
+  }
 }
 
 // ---------- Special abilities and cheats ------------------------------------
@@ -708,9 +826,9 @@ function flashAIAction(action) {
 function readIntent() {
   if (state.focus < 20) return;
   state.focus -= 20;
-  const opp = D.OPPONENTS[state.session.opponentId];
-  const eq = P.estimateEquity(hand.oppHole, hand.board, 250);
-  const oppEquity = 1 - eq + 0; // Their equity vs hero
+  const oppSeat = hand.seats[opponentIdx()];
+  const eq = P.estimateEquity(oppSeat.hole, hand.board, 250);
+  const oppEquity = 1 - eq; // Their equity vs hero
   // Show actual bluff/strength read
   const text = oppEquity > 0.65
     ? `He has it. Genuine strength — roughly ${Math.round(oppEquity*100)}% to win at showdown.`
@@ -749,10 +867,9 @@ function cheatMuckCard() {
   const risk = cheatRiskPct('muck');
   state.session.suspicion = Math.min(1, state.session.suspicion + 0.22);
   if (Math.random() < risk) return cheatBusted();
-  // Take the better hole card into the sleeve. Force the other to be replaced
-  // by a random new card next hand (handled via createHand sleeveCard slot).
-  const idx = hand.heroHole[0].rank >= hand.heroHole[1].rank ? 0 : 1;
-  state.sleeveCard = { ...hand.heroHole[idx] };
+  const hero = hand.seats[heroIdx()];
+  const idx = hero.hole[0].rank >= hero.hole[1].rank ? 0 : 1;
+  state.sleeveCard = { ...hero.hole[idx] };
   state.session.successfulCheats++;
   state.successfulCheats++;
   pushIntrusion('SHARK', `${P.rankLabel(state.sleeveCard.rank)}${state.sleeveCard.suit} disappears up your sleeve. You\'ll see it again next hand.`);
@@ -769,7 +886,7 @@ function cheatBusted() {
     state.rp = Math.max(0, state.rp - 60);
   }
   state.session.busted = true;
-  state.session.playerStack = 0;
+  state.session.stacks[heroIdx()] = 0;
   endSession();
 }
 
@@ -777,36 +894,35 @@ function cheatBusted() {
 
 function resolveHand() {
   renderFight();
-  // Update session bookkeeping
-  if (hand.winner === 'player') state.session.cleanShowdownsWon++;
-  // Track best hand reached
-  if (hand.heroBest) {
-    state.session.bestHandCat = Math.max(state.session.bestHandCat, hand.heroBest.category);
-  }
+  const oIdx = opponentIdx();
+  const heroSeat = hand.seats[heroIdx()];
+  const oppSeat  = hand.seats[oIdx];
+
+  // Update session bookkeeping — clean showdown = hero won and went to actual showdown
+  if (hand.winnerIdxs.includes(heroIdx())) state.session.cleanShowdownsWon++;
+  if (heroSeat.best) state.session.bestHandCat = Math.max(state.session.bestHandCat, heroSeat.best.category);
+
   pendingShowdown = true;
   const sd = $('#showdown');
-  $('#showdown-title').textContent =
-    hand.winner === 'player' ? 'You Take The Pot' :
-    hand.winner === 'opp'    ? 'Pot Goes To Them' : 'Split Pot';
+  const heroWon = hand.winnerIdxs.includes(heroIdx());
+  const split = hand.winnerIdxs.length > 1;
+  $('#showdown-title').textContent = split ? 'Split Pot' : (heroWon ? 'You Take The Pot' : 'Pot Goes To Them');
   $('#showdown-reason').textContent = hand.reason;
   const ho = $('#showdown-opp');
   const hh = $('#showdown-hero');
   ho.innerHTML = ''; hh.innerHTML = '';
-  // Show opp cards only at true showdown (street reached river + neither folded)
-  const wentToShowdown = hand.heroBest && hand.villBest;
-  hand.heroHole.forEach(c => hh.appendChild(makeCardEl(c)));
-  hand.oppHole.forEach(c => {
+  // Show opp cards only at true showdown (i.e. opp didn't fold)
+  const wentToShowdown = !!oppSeat.best;
+  heroSeat.hole.forEach(c => hh.appendChild(makeCardEl(c)));
+  oppSeat.hole.forEach(c => {
     const el = wentToShowdown ? makeCardEl(c) : (() => { const x = makeCardEl(c); x.classList.add('back'); x.innerHTML = ''; return x; })();
     ho.appendChild(el);
   });
-  $('#showdown-hero-name').textContent = hand.heroBest ? hand.heroBest.name : '—';
-  $('#showdown-opp-name').textContent  = hand.villBest && wentToShowdown ? hand.villBest.name : 'Mucked';
+  $('#showdown-hero-name').textContent = heroSeat.best ? heroSeat.best.name : '—';
+  $('#showdown-opp-name').textContent  = oppSeat.best && wentToShowdown ? oppSeat.best.name : 'Mucked';
   sd.classList.remove('hidden');
   $('#next-hand-btn').onclick = () => {
-    if (state.session.playerStack <= 0 || state.session.oppStack <= 0) {
-      // Bust or KO → end session and rebuy/award handled in startNewHand
-    }
-    if (state.session.playerStack <= 0) return endSession();
+    if (state.session.stacks[heroIdx()] <= 0) return endSession();
     startNewHand(false);
   };
   $('#leave-table-btn').onclick = () => endSession();
@@ -835,7 +951,7 @@ function endSession() {
     cashReturned = state.session.tournamentWin ? venue.tournamentWinPayout : 0;
     grossNet = cashReturned - state.session.buyIn;
   } else {
-    cashReturned = state.session.playerStack; // chips = cash in cash games
+    cashReturned = state.session.stacks[heroIdx()];
     grossNet = cashReturned - state.session.buyIn;
   }
   let cashGain = cashReturned;
@@ -1140,30 +1256,15 @@ function applyStageParam() {
   if (stage === 'poker') {
     // Fabricate a mid-hand fight-mode view for screenshots.
     state.cash = 1250; state.rp = 320;
-    const venue = D.VENUES.find(v => v.id === 'firehouse');
-    state.session = {
-      venueId: 'firehouse', opponentId: 'detective_callahan', partnerId: null,
-      isTournament: true, startStack: 1500, buyIn: 150, startingRP: 320,
-      playerStack: 1800, oppStack: 1200, suspicion: 0.12,
-      handsPlayed: 4, cleanShowdownsWon: 2, successfulCheats: 0,
-      bestHandCat: 1, netFromCheats: 0, busted: false,
-    };
-    const opp = D.OPPONENTS.detective_callahan;
-    document.querySelector('#opp-portrait').style.setProperty('--portrait-tint', opp.portraitTint);
-    document.querySelector('#opp-face').textContent = 'DC';
-    document.querySelector('#opp-name').textContent = opp.name;
-    showScreen('poker');
-    // Manually build a hand with a flop already on the board.
-    hand = P.createHand({
-      playerStack: 1800, oppStack: 1200,
-      smallBlind: 10, bigBlind: 20, playerOnButton: false,
-    });
-    // Force pre-flop call + check then a flop:
-    P.applyAction(hand, { type: 'call', amount: 10 });
-    P.applyAction(hand, { type: 'check' });
-    // Pre-load a couple of intrusions
-    fireIntrusionsForState();
-    renderFight();
+    state.partnerId = null;
+    enterVenue(D.VENUES.find(v => v.id === 'firehouse'));
+    return;
+  }
+  if (stage === 'poker-worm') {
+    // Three-handed demo at the Deli with Worm as partner.
+    state.cash = 800; state.rp = 60;
+    state.partnerId = 'worm';
+    enterVenue(D.VENUES.find(v => v.id === 'deli'));
     return;
   }
   if (stage === 'postgame') {

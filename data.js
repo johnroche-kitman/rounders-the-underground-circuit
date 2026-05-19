@@ -144,22 +144,30 @@ const PARTNERS = {
   worm: {
     id: 'worm',
     name: 'Worm (Lester Murphy)',
-    blurb: 'Sleight of hand expert. High risk, high reward.',
-    synergy: ['Adds "The Squeeze" to your action menu', 'Cheat success +15%', 'Signals strong hole cards via UI hints'],
-    risk: 'Table Suspicion starts at 20%. If caught, both of you are banned permanently.',
+    shortName: 'Worm',
+    blurb: 'Sleight of hand expert. Sits at the table with you. High risk, high reward.',
+    synergy: ['Sits at the table as a third player', 'Signals his hand strength to you', 'Cheat success +15%', 'Can call your peek/muck attempts off the radar'],
+    risk: 'Table Suspicion starts at 20%. Each of his signals raises it more. If you\'re caught, both of you are banned permanently.',
     cut: 0.4,
     cheatBonus: 0.15,
     suspicionFloor: 0.2,
+    suspicionPerSignal: 0.06,
+    profile: { competence: 0.55, aggression: 0.7, bluff: 0.28 },
+    portraitDir: 'worm/',
+    portraitMoods: ['resigned','signaling','thinking','confident','anxious','shocked','happy','neutral','focused','suspicious','waiting'],
   },
   tony: {
     id: 'tony',
     name: 'Tony B.',
-    blurb: 'Card counter / distractor. Lower risk, smaller payoff.',
+    shortName: 'Tony',
+    blurb: 'Card counter / distractor. Stays off the table. Lower risk, smaller payoff.',
     synergy: ['Counts the deck — Calculator gets +10% accuracy', 'Cheat success +5%', 'Distracts opponents during your Peeks'],
     risk: 'Table Suspicion starts at 8%. If caught, you take the heat alone.',
     cut: 0.25,
     cheatBonus: 0.05,
     suspicionFloor: 0.08,
+    suspicionPerSignal: 0,
+    sitsAtTable: false,
   },
 };
 
@@ -217,7 +225,195 @@ const VOICES = {
       return 'Tight. Patient. Live to play tomorrow.';
     },
   },
+  DISCIPLE: {
+    name: 'THE DISCIPLE',
+    color: '#c4a8d6',
+    icon: '❦',
+    speak(ctx) {
+      return discipleLine(ctx) || 'Brunson. Chan. Moss. Ungar. The old gods. They all played this same game.';
+    },
+  },
 };
+
+// ----- The Disciple's library --------------------------------------------------
+// Mike's encyclopedic knowledge of poker history. Triggered by the current
+// hole cards or the made hand on the river.
+
+function rankChar(r) { return ({14:'A',13:'K',12:'Q',11:'J',10:'T'})[r] || String(r); }
+
+function handSignature(hole) {
+  if (!hole || hole.length !== 2) return null;
+  const [a, b] = hole;
+  const hi = Math.max(a.rank, b.rank);
+  const lo = Math.min(a.rank, b.rank);
+  if (hi === lo) return rankChar(hi) + rankChar(lo);                     // "AA"
+  return rankChar(hi) + rankChar(lo) + (a.suit === b.suit ? 's' : 'o'); // "AKs" / "AKo"
+}
+
+const HAND_TRIVIA = {
+  // ---------- Pocket pairs ----------
+  AA: [
+    'Pocket Rockets. American Airlines. Bullets. The best hand in poker, and the most cursed if you slow-play them.',
+    'Stu Ungar said it best: "Aces always win — until they don\'t."',
+    'Pre-flop you\'re an 85% favourite against any random hand. Build the pot.',
+  ],
+  KK: [
+    'Cowboys. King Kong. Every player has a Kings story that ends with someone catching their Ace.',
+    'Daniel Negreanu loses sleep over Kings. Wait for the Ace on the flop. Fold them if it comes.',
+    'Phil Hellmuth: "I can dodge bullets, baby!" — that was the night he ran into pocket Kings.',
+  ],
+  QQ: [
+    'The Hilton Sisters. Ladies. The third-best starting hand — hates a King or Ace on the flop.',
+    'Doyle Brunson called Queens the second-hardest hand to play. The first was Ace-King.',
+  ],
+  JJ: [
+    'Fishhooks. Every pro will tell you the same thing — with Jacks, a Queen, King, or Ace is always coming on the flop.',
+    'Brothers. They look beautiful pre-flop. They get cracked more than any other pair.',
+  ],
+  TT: [
+    'Dimes. Bo Derek — a perfect pair of tens.',
+    'Mike Caro wrote that pocket tens is the hand where new players first learn what variance really means.',
+  ],
+  99: [
+    'Wayne Gretzky. Number 99. Easy to over-play, easy to lay down.',
+    'Nines. Set-mine in position, fold them out of position. Boring works.',
+  ],
+  88: [
+    'Snowmen. Set or get out — that\'s the entire strategy with eights.',
+  ],
+  77: [
+    'Hockey sticks. Walking sticks. The Sunset Strip.',
+    'Sevens. The middle-pair purgatory.',
+  ],
+  66: [
+    'Route 66. The speed limit. The most under-rated set-miner in hold\'em.',
+  ],
+  55: [
+    'Speed limit. Nickels. Snakes.',
+  ],
+  44: [
+    'Sailboats. Magnum P.I.\'s pistol.',
+  ],
+  33: [
+    'Crabs. Treys. They scuttle sideways and bite you on the river.',
+  ],
+  22: [
+    'Ducks. The smallest pair. Implied odds, or fold.',
+    'Deuces. Worth playing only when you can win a big pot or lose a small one.',
+  ],
+  // ---------- Broadway combos ----------
+  AKs: [
+    'Big Slick — suited. T.J. Cloutier said he\'d rather have AKs than aces. He\'s mostly wrong, but he\'s mostly Cloutier.',
+    'Slick suited. Coin-flip against any pair under tens.',
+  ],
+  AKo: [
+    'Anna Kournikova. Looks great. Never wins. That\'s what they say.',
+    'Big Slick offsuit. The hand Phil Hellmuth still complains about on Twitter.',
+  ],
+  AQs: [
+    'Antony and Cleopatra. Big Chick suited. Dominates AJ, dies to AK.',
+  ],
+  AQo: [
+    'Big Chick. Mrs. Slick. Plays well against limpers — dies in a raised pot against AK.',
+  ],
+  AJs: [
+    'Ajax — the cleaner. Suited paint, plays straights and flushes well.',
+  ],
+  AJo: [
+    'Ajax. Looks like the world. Gets dominated by every higher Ace.',
+  ],
+  ATo: [
+    'Johnny Moss\'s hand. The Grand Old Man loved Ace-Ten — said it caught more rivers than any combo he played.',
+  ],
+  KQs: [
+    'Marriage — suited. Royalty. The hand for straights and royal-flush dreams.',
+  ],
+  KQo: [
+    'Royal Marriage. Calling stations love this hand. It loves them back.',
+  ],
+  KJo: [
+    'Kojak. "Who loves ya, baby?" Telly Savalas\'s favourite.',
+  ],
+  QJs: [
+    'Maverick. The 1994 Mel Gibson movie ended on Queen-Jack.',
+  ],
+  JTs: [
+    'T.J. Cloutier swore by Jack-Ten suited. Said it was the best hand in hold\'em for straights and flushes both.',
+  ],
+  // ---------- Mythical hands ----------
+  T2s: [
+    'The Doyle Brunson. Doyle won the WSOP Main Event in 1976 AND 1977 holding this exact hand. Twice in a row.',
+    'Ten-Deuce. Doyle never lived it down. He hates that the whole world knows now.',
+  ],
+  T2o: [
+    'The Doyle Brunson. Two World Series of Poker championships, back-to-back, with Ten-Deuce. 1976 and \'77.',
+  ],
+  '72o': [
+    'The Hammer. The worst starting hand in hold\'em. Win with it and never let the table forget.',
+    'Beer Hand. Local rule: win with 7-2 offsuit and the table buys you a round.',
+  ],
+  '72s': [
+    'Suited Hammer. Still trash. Looks slightly less like trash.',
+  ],
+  '54s': [
+    'The Moneymaker. Chris Moneymaker bluffed Sammy Farha off the better hand at the 2003 final table with 5-4 suited.',
+  ],
+  '73o': [
+    'Joe Hachem held 7-3 in his pocket when he won the 2005 WSOP Main Event\'s last hand. Australia\'s first world champion.',
+  ],
+  '23o': [
+    'Michael Jordan. Number 23. The G.O.A.T. hand for fans of failure.',
+  ],
+  // ---------- Suited connectors ----------
+  '89s': ['Suited connectors. The kind of hand Stu Ungar made monsters with.'],
+  '78s': ['The Hammer of Thor — 7-8 suited. Doyle Brunson loved this one in late position.'],
+  '67s': ['Suited connector. Disguised straights, big implied odds when you flop the world.'],
+  '56s': ['Five-six suited. The kind of hand that wins a tournament if you let it.'],
+  '45s': ['Suited gappers. Implied odds or fold.'],
+};
+
+// Reverence for made hands on the river.
+const MADE_HAND_LORE = {
+  9: [ // Straight flush
+    'Straight flush. Stu Ungar made one against Mansour Matloubi in the \'97 Main Event. Cards have memory.',
+    'One in 72,193 hands. Take a moment. Most pros never see one.',
+  ],
+  8: [ // Four of a kind
+    'Quads. The hand that pays off your rent for six months and changes how the table looks at you forever.',
+    'Four of a kind. The kind of hand Daniel Negreanu calls out loud before the river falls.',
+  ],
+  7: [ // Full house
+    'A boat. Phil Hellmuth: "My poker brain told me he had a boat!"',
+    'Full house. The hand that broke Sammy Farha\'s heart against Moneymaker in 2003 — except Moneymaker had nothing.',
+  ],
+  6: [ // Flush
+    'Flush. Doyle Brunson once said flushes are the worst hand in poker — they look strong but they\'re not.',
+    'A flush on the river. Watch the four-of-a-suit board. Watch their face.',
+  ],
+  5: [ // Straight
+    'Straight. Johnny Chan made one with J-9 against Erik Seidel on the \'88 Main\'s final hand. Slow-played the river perfectly.',
+    'A made straight. Half the time you win, half the time someone\'s drawing dead.',
+  ],
+  4: [ // Three of a kind
+    'Trips. Sammy Farha\'s favourite trap. Hidden in a connected board, lethal.',
+  ],
+};
+
+function discipleLine(ctx) {
+  const { heroHole, board, heroBest, street } = ctx || {};
+  // River made-hand reverence
+  if (street === 'river' && heroBest && MADE_HAND_LORE[heroBest.category]) {
+    const pool = MADE_HAND_LORE[heroBest.category];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  // Starting-hand trivia (pre-flop and flop)
+  if ((street === 'preflop' || street === 'flop') && heroHole) {
+    const sig = handSignature(heroHole);
+    const pool = HAND_TRIVIA[sig];
+    if (pool) return pool[Math.floor(Math.random() * pool.length)];
+  }
+  return null;
+}
 
 // Phone inbox seed messages. The state machine can push more as days advance.
 const PHONE_MESSAGES = [
@@ -258,7 +454,40 @@ function rankFor(rp) {
 
 const TIME_CYCLE = ['MORNING', 'EVENING', 'LATE NIGHT'];
 
+// Worm's signal pool, keyed by his hand strength bucket. The first key whose
+// predicate matches determines what Worm communicates this street.
+const WORM_SIGNALS = {
+  monster: { mood: 'signaling', text: 'Worm taps his glass twice — slow, deliberate. Premium pair. Trap him.' },
+  strong:  { mood: 'signaling', text: 'Worm runs a finger along his eyebrow. Big card, suited. He likes it.' },
+  decent:  { mood: 'confident', text: 'Worm flicks a chip across his knuckles. Mid-range hand, drawing live.' },
+  draw:    { mood: 'thinking',  text: 'Worm scratches his ear. He\'s on a draw — flush or straight.' },
+  weak:    { mood: 'resigned',  text: 'Worm shrugs at his cards. Nothing. He\'ll fold to a real bet.' },
+  air:     { mood: 'anxious',   text: 'Worm rubs his jaw. Total air. Don\'t commit chips alongside him.' },
+};
+
+function classifyWormHand(hole, board) {
+  if (!hole || hole.length !== 2) return 'weak';
+  const [a, b] = hole;
+  const hi = Math.max(a.rank, b.rank);
+  const lo = Math.min(a.rank, b.rank);
+  const suited = a.suit === b.suit;
+  const connected = (hi - lo) === 1;
+  const pair = hi === lo;
+  if (!board || board.length === 0) {
+    if (pair && hi >= 11) return 'monster';
+    if (pair) return 'strong';
+    if (hi === 14 && lo >= 10 && suited) return 'strong';
+    if (hi === 14 && lo >= 10) return 'decent';
+    if (hi >= 13 && lo >= 10 && suited) return 'decent';
+    if (suited && connected && hi >= 8) return 'draw';
+    if (suited && connected) return 'weak';
+    return 'air';
+  }
+  // Post-flop: rough hand-strength classification based on equity proxy
+  return null; // we'll fall back to equity-based eval in game.js
+}
+
 window.GameData = {
-  VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES,
-  RANK_BANDS, TIME_CYCLE, rankFor,
+  VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
+  RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand,
 };
