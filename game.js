@@ -387,7 +387,14 @@ function enterVenue(venue) {
   const partnerSits = partner && partner.sitsAtTable !== false && partner.profile;
   const seats = [{ id: 'player', name: 'Mike', kind: 'hero' }];
   if (partnerSits) {
-    seats.push({ id: 'worm', name: partner.shortName || 'Worm', kind: 'partner', profile: partner.profile });
+    seats.push({
+      id: 'worm',
+      name: partner.shortName || 'Worm',
+      kind: 'partner',
+      profile: partner.profile,
+      portraitTint: partner.portraitTint,
+      label: partner.label,
+    });
   }
   oppList.forEach((oId, i) => {
     const o = D.OPPONENTS[oId];
@@ -451,8 +458,9 @@ function heroIdx()    { return 0; }
 function partnerIdx() { return state.session.seats.findIndex(s => s.kind === 'partner'); }
 function opponentIdx(){ return state.session.seats.findIndex(s => s.kind === 'opponent'); }
 function allOpponentIdxs() { return state.session.seats.map((s, i) => ({ s, i })).filter(({ s }) => s.kind === 'opponent').map(({ i }) => i); }
+function allTableNonHeroIdxs() { return state.session.seats.map((s, i) => ({ s, i })).filter(({ s }) => s.kind !== 'hero').map(({ i }) => i); }
 function isHeroTurn() { return hand && hand.toActIdx === 0; }
-function isMultiOpp() { return allOpponentIdxs().length > 1; }
+function isMultiOpp() { return allTableNonHeroIdxs().length > 1; }
 
 let hand = null;
 let raiseAmount = 0;
@@ -589,11 +597,11 @@ function renderFight() {
 
   // Opponent area: single big portrait vs. multi-opp felt seats + namecard
   if (isMultiOpp()) {
-    // Auto-follow the current actor when it's an opponent's turn
+    // Auto-follow the current actor when it's NOT the hero
     if (!hand.finished) {
       const cur = hand.toActIdx;
       const curSeat = state.session.seats[cur];
-      if (curSeat && curSeat.kind === 'opponent') {
+      if (curSeat && curSeat.kind !== 'hero') {
         state.session.focusedOppIdx = cur;
       }
     }
@@ -726,15 +734,22 @@ function setupOpponentLayout() {
   }
 }
 
-// Render the left rail for the focused opp. Picks portrait-sheet mode (Joey's
-// painterly faces) when available, else falls back to a stylised namecard.
+// Look up the character definition (opp or partner) for a given seat.
+function characterFor(sessionSeat) {
+  if (!sessionSeat) return null;
+  if (sessionSeat.kind === 'partner') return D.PARTNERS[state.partnerId] || null;
+  return D.OPPONENTS[sessionSeat.opponentId] || null;
+}
+
+// Render the left rail for the focused player. Picks portrait-sheet mode
+// (Joey's faces, Worm's faces) when available, else stylised namecard.
 function renderFocusedOppLeftRail() {
   if (!isMultiOpp()) return;
   const idx = state.session.focusedOppIdx;
   if (idx == null) return;
   const sessionSeat = state.session.seats[idx];
   if (!sessionSeat) return;
-  const oppDef = D.OPPONENTS[sessionSeat.opponentId] || {};
+  const oppDef = characterFor(sessionSeat) || {};
   const portrait = $('#opp-portrait');
   const wantMode = (oppDef.portraitDir && oppDef.portraitMoods) ? 'portrait' : 'namecard';
   const lastIdx = state.session.lastLeftRailIdx;
@@ -779,7 +794,7 @@ function renderFocusedOppLeftRail() {
 function renderFeltSeats() {
   const felt = document.querySelector('.felt');
   if (!felt || !hand) return;
-  const idxs = allOpponentIdxs();
+  const idxs = allTableNonHeroIdxs();
   felt.dataset.opps = idxs.length;
   // Remove old seats
   Array.from(felt.querySelectorAll('.felt-seat')).forEach(el => el.remove());
@@ -826,16 +841,32 @@ function pushDialog(idx, situation) {
   if (!isMultiOpp()) return;
   const sessionSeat = state.session.seats[idx];
   if (!sessionSeat) return;
-  const oppDef = D.OPPONENTS[sessionSeat.opponentId];
-  const line = D.pickDialog(oppDef, situation);
+  const charDef = characterFor(sessionSeat);
+  const line = D.pickDialog(charDef, situation);
   if (!line) return;
   setFocusedOpp(idx);
+  speakDialog(sessionSeat.name, line);
+}
+
+// Force a line into the dialog bubble (for Worm signals, etc.) regardless of
+// dialog dictionary lookup.
+function speakLine(idx, line) {
+  if (!isMultiOpp() || !line) return;
+  const sessionSeat = state.session.seats[idx];
+  if (!sessionSeat) return;
+  setFocusedOpp(idx);
+  // Re-render the left rail in case focus changed character type
+  renderFocusedOppLeftRail();
+  speakDialog(sessionSeat.name, line);
+}
+
+function speakDialog(speaker, line) {
   const speakerEl = $('#dialog-speaker');
   const textEl = $('#dialog-text');
-  if (speakerEl) speakerEl.textContent = sessionSeat.name;
+  if (speakerEl) speakerEl.textContent = speaker;
   if (textEl) {
     textEl.classList.remove('fade');
-    void textEl.offsetWidth; // restart animation
+    void textEl.offsetWidth;
     textEl.classList.add('fade');
     textEl.textContent = line;
   }
@@ -879,32 +910,25 @@ function setWormMood(mood) { const f = $('#worm-face'); if (f) setMoodOn(f, mood
 
 // ---------- Worm panel + signaling -----------------------------------------
 
+// Worm is now a felt seat. This just wires the mute control in the right rail.
 function setupWormPanel(partner) {
-  const panel = $('#worm-panel');
-  if (!panel) return;
-  if (!partner) { panel.style.display = 'none'; return; }
-  panel.style.display = 'flex';
-  $('#worm-name').textContent = partner.shortName || 'Worm';
-  setupPortraitArea($('#worm-face'), partner);
-  $('#worm-action').textContent = '';
-  $('#worm-signal-text').textContent = '';
-  $('#worm-stop-btn').disabled = state.session.wormMuted;
-  $('#worm-stop-btn').textContent = state.session.wormMuted ? 'Signals muted' : 'Tell him to cool it';
-  $('#worm-stop-btn').onclick = () => {
+  const btn = $('#worm-stop-btn');
+  if (!btn) return;
+  if (!partner) { btn.style.display = 'none'; return; }
+  btn.style.display = 'block';
+  btn.disabled = state.session.wormMuted;
+  btn.textContent = state.session.wormMuted ? 'Signals muted' : 'Tell Worm to cool it';
+  btn.onclick = () => {
     state.session.wormMuted = true;
-    $('#worm-stop-btn').disabled = true;
-    $('#worm-stop-btn').textContent = 'Signals muted';
-    $('#worm-signal-text').textContent = 'You catch his eye. He nods. No more signals.';
+    btn.disabled = true;
+    btn.textContent = 'Signals muted';
+    const pIdx = partnerIdx();
+    if (pIdx >= 0) speakLine(pIdx, 'You catch his eye. He nods. No more signals.');
     saveState();
   };
 }
 
-function renderWormPanel() {
-  const pIdx = partnerIdx();
-  if (pIdx < 0 || !hand) return;
-  const stack = hand.seats[pIdx].stack;
-  $('#worm-stack').textContent = dollars(stack);
-}
+function renderWormPanel() { /* no-op — Worm renders as a felt seat now */ }
 
 function fireWormSignal(streetName) {
   const pIdx = partnerIdx();
@@ -929,9 +953,8 @@ function fireWormSignal(streetName) {
   const sig = D.WORM_SIGNALS[bucket] || D.WORM_SIGNALS.weak;
   state.session.wormLastSignal = sig;
   state.session.suspicion = Math.min(1, state.session.suspicion + (partner.suspicionPerSignal || 0));
-  $('#worm-signal-text').textContent = sig.text;
-  setWormMood(sig.mood);
-  renderFight();
+  // Show the signal as Worm's dialog bubble line (focus shifts to him)
+  speakLine(pIdx, sig.text);
 }
 
 // Mood picker — driven by live hand state, suspicion, last opp action, equity.
@@ -1121,9 +1144,9 @@ function flashAIAction(action, idx) {
     const w = $('#worm-action');
     if (w) w.textContent = line;
   }
-  // Multi-opp: speaker dialog
+  // Multi-opp: speaker dialog for any non-hero seat
   const seat = state.session.seats[idx];
-  if (isMultiOpp() && seat.kind === 'opponent') {
+  if (isMultiOpp() && seat && seat.kind !== 'hero') {
     const situation = action.type === 'raise' ? 'raised'
       : action.type === 'call'  ? 'called'
       : action.type === 'fold'  ? 'folded'
