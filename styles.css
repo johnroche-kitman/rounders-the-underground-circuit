@@ -491,7 +491,22 @@ body {
   color: rgba(232,217,192,0.18);
   font-weight: 700;
   letter-spacing: -0.04em;
+  position: relative;
+  overflow: hidden;
+  margin: 0 -20px;                /* counter parent padding so image goes edge-to-edge */
 }
+.portrait-face img.face-mood {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;       /* favour the face, not the hands */
+  opacity: 0;
+  transition: opacity 0.45s ease-in-out;
+  filter: contrast(1.05) saturate(0.92);
+}
+.portrait-face img.face-mood.active { opacity: 1; }
 .tell-feed {
   font-style: italic;
   font-size: 13px;

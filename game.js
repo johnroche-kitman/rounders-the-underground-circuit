@@ -313,8 +313,8 @@ function enterVenue(venue) {
   };
   state.focus = Math.min(100, state.focus + 10);
   $('#opp-portrait').style.setProperty('--portrait-tint', opponent.portraitTint);
-  $('#opp-face').textContent = opponent.name.split(' ').map(s => s[0]).join('').slice(0, 2);
   $('#opp-name').textContent = opponent.name;
+  setupPortraitArea(opponent);
   showScreen('poker');
   updateStatusBar();
   startNewHand(true);
@@ -424,6 +424,7 @@ function renderFight() {
 
   renderActionBar();
   renderTellFeed();
+  refreshOpponentMood();
 }
 
 function streetLabel(s) {
@@ -513,6 +514,84 @@ function renderActionBar() {
   muckBtn.disabled = !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   muckBtn.addEventListener('click', cheatMuckCard);
   bar.appendChild(muckBtn);
+}
+
+// ---------- Opponent portrait + mood -----------------------------------------
+
+function setupPortraitArea(opponent) {
+  const face = $('#opp-face');
+  face.innerHTML = '';
+  if (opponent.portraitDir && opponent.portraitMoods) {
+    // Preload all moods so swaps are instant
+    opponent.portraitMoods.forEach(mood => {
+      const img = document.createElement('img');
+      img.className = 'face-mood';
+      img.dataset.mood = mood;
+      img.src = opponent.portraitDir + mood + '.jpg';
+      img.alt = '';
+      face.appendChild(img);
+    });
+    setMood('neutral');
+  } else {
+    // Fallback: render initials
+    face.textContent = opponent.name.split(' ').map(s => s[0]).join('').slice(0, 2);
+    face.style.fontSize = '';
+  }
+}
+
+function setMood(mood) {
+  const imgs = $$('#opp-face img.face-mood');
+  if (!imgs.length) return;
+  imgs.forEach(img => img.classList.toggle('active', img.dataset.mood === mood));
+}
+
+// Mood picker — driven by live hand state, suspicion, last opp action, equity.
+let _moodEquityCache = null;
+function refreshOpponentMood() {
+  const opp = D.OPPONENTS[state.session?.opponentId];
+  if (!opp || !opp.portraitMoods) return;
+
+  // Suspicion takes precedence
+  const susp = state.session.suspicion || 0;
+  if (susp >= 0.55) return setMood('suspicious');
+  if (susp >= 0.30) return setMood('angry');
+
+  if (!hand) return setMood('neutral');
+
+  // Hand finished
+  if (hand.finished) {
+    if (hand.winner === 'opp') return setMood('confident');
+    if (hand.winner === 'player') {
+      const lastOpp = [...hand.history].reverse().find(h => h.who === 'opp');
+      if (lastOpp && lastOpp.type === 'fold') return setMood('resigned');
+      return setMood('defeated');
+    }
+    return setMood('neutral');
+  }
+
+  // Estimate opp equity (cheap monte-carlo)
+  const equity = P.estimateEquity(hand.oppHole, hand.board, 80);
+  _moodEquityCache = equity;
+
+  // React to opp's most recent action this street
+  const lastOpp = [...hand.history].reverse().find(h => h.who === 'opp' && h.street === hand.street);
+  if (lastOpp) {
+    if (lastOpp.type === 'raise') {
+      return setMood(equity > 0.55 ? 'confident' : 'observing');
+    }
+    if (lastOpp.type === 'fold') return setMood('resigned');
+    if (lastOpp.type === 'call' && lastOpp.amount > hand.bigBlind * 4) {
+      return setMood(equity > 0.5 ? 'observing' : 'anxious');
+    }
+  }
+
+  if (hand.toAct === 'opp') return setMood('thinking');
+
+  // Player to act; Joey reacts to the situation passively.
+  if (equity > 0.7)  return setMood('confident');
+  if (equity > 0.45) return setMood('observing');
+  if (equity > 0.25) return setMood('uncertain');
+  return 'anxious', setMood('anxious');
 }
 
 function renderTellFeed() {

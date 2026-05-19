@@ -88,6 +88,8 @@ const OPPONENTS = {
     name: 'Joey "Pickles" Pellegrino',
     label: 'Tired truck dispatcher',
     portraitTint: '#7a4b1f',
+    portraitDir: 'joey/',
+    portraitMoods: ['neutral','confident','uncertain','suspicious','resigned','thinking','anxious','observing','angry','defeated'],
     profile: { competence: 0.3, aggression: 0.3, bluff: 0.06 },
     tells: [
       { strength: 'strong', text: 'He stares at the board. Doesn\'t blink. Hands flat on the felt.' },
