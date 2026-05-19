@@ -45,6 +45,7 @@ const VENUES = [
     opponentId: 'detective_callahan',
     opponents: ['detective_callahan', 'detective_torres', 'patrol_donovan', 'captain_ortiz', 'judge_levine'],
     openings: ['night', 'late'],
+    interiorImage: 'firehouse.jpg',
   },
   {
     id: 'elmwood',
