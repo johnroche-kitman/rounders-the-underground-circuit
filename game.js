@@ -89,7 +89,7 @@ function showScreen(name) {
   if (name === 'map')     renderMap();
   if (name === 'phone')   renderPhone();
   if (name === 'sheet')   renderSheet();
-  if (name === 'shylock') renderShylock();
+  if (name === 'vig')     renderVig();
 }
 
 // ---------------------------------------------------------------- Status ----
@@ -807,9 +807,9 @@ function endSession() {
   showScreen('postgame');
 }
 
-// ---------------------------------------------------------------- SHYLOCK --
+// ---------------------------------------------------------------- THE VIG --
 
-function renderShylock() {
+function renderVig() {
   updateStatusBar();
   const slider = $('#loan-slider');
   const update = () => {
@@ -1013,7 +1013,7 @@ function init() {
     renderMap();
   });
   // Safety nets
-  $('#shylock-node').addEventListener('click', () => showScreen('shylock'));
+  $('#vig-node').addEventListener('click', () => showScreen('vig'));
   $('#phone-node').addEventListener('click', () => showScreen('phone'));
   // Phone keys
   $$('.nokia-key').forEach(k => k.addEventListener('click', () => {

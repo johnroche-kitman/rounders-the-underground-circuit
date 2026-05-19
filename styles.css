@@ -270,10 +270,10 @@ body {
   transition: background 0.15s, transform 0.15s;
 }
 .safety-net:hover { background: rgba(31,26,22,0.95); transform: translateY(-2px); }
-.safety-net.shylock { left: 28px; border-left: 3px solid var(--blood); }
+.safety-net.vig { left: 28px; border-left: 3px solid var(--blood); }
 .safety-net.phone   { right: 28px; border-left: 3px solid var(--amber); }
 .safety-net .net-title { color: var(--amber); }
-.safety-net.shylock .net-title { color: var(--blood); }
+.safety-net.vig .net-title { color: var(--blood); }
 .safety-net .net-sub { color: var(--paper-dim); font-size: 10px; }
 
 /* Venue detail panel */
@@ -723,7 +723,7 @@ body {
 .suspicion-fill { height: 100%; background: linear-gradient(90deg, var(--amber) 0%, var(--blood) 100%); transition: width 0.4s; }
 
 /* ============================================================================
-   MODAL: Shylock, Team-Up, Post-Game, Phone, Sheet
+   MODAL: The Vig, Team-Up, Post-Game, Phone, Sheet
    ========================================================================= */
 
 .screen.modal-screen {
@@ -761,7 +761,7 @@ body {
 .modal-actions { display: flex; gap: 14px; margin-top: 26px; }
 .modal-actions .btn { flex: 1; text-align: center; }
 
-/* Shylock */
+/* The Vig */
 .grama-portrait {
   display: flex;
   gap: 22px;
