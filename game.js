@@ -1040,6 +1040,73 @@ function init() {
   showScreen('map');
   // Friendly default selection so the panel isn't blank on first load
   if (!state.selectedVenueId) { state.selectedVenueId = 'deli'; renderMap(); }
+  // ?stage=NAME for screenshot / deep-link demos.
+  applyStageParam();
+}
+
+function applyStageParam() {
+  const stage = new URLSearchParams(location.search).get('stage');
+  if (!stage) return;
+  if (stage === 'map') {
+    state.selectedVenueId = 'firehouse';
+    state.unlockedVenues = ['deli', 'firehouse', 'elmwood'];
+    state.cash = 1250; state.rp = 320; state.day = 14; state.timeIndex = 2;
+    updateStatusBar(); renderMap();
+    return;
+  }
+  if (stage === 'vig') { showScreen('vig'); return; }
+  if (stage === 'phone') { showScreen('phone'); return; }
+  if (stage === 'sheet') { showScreen('sheet'); return; }
+  if (stage === 'teamup') { openTeamUp(D.VENUES.find(v => v.id === 'elmwood')); return; }
+  if (stage === 'poker') {
+    // Fabricate a mid-hand fight-mode view for screenshots.
+    state.cash = 1250; state.rp = 320;
+    const venue = D.VENUES.find(v => v.id === 'firehouse');
+    state.session = {
+      venueId: 'firehouse', opponentId: 'detective_callahan', partnerId: null,
+      isTournament: true, startStack: 1500, buyIn: 150, startingRP: 320,
+      playerStack: 1800, oppStack: 1200, suspicion: 0.12,
+      handsPlayed: 4, cleanShowdownsWon: 2, successfulCheats: 0,
+      bestHandCat: 1, netFromCheats: 0, busted: false,
+    };
+    const opp = D.OPPONENTS.detective_callahan;
+    document.querySelector('#opp-portrait').style.setProperty('--portrait-tint', opp.portraitTint);
+    document.querySelector('#opp-face').textContent = 'DC';
+    document.querySelector('#opp-name').textContent = opp.name;
+    showScreen('poker');
+    // Manually build a hand with a flop already on the board.
+    hand = P.createHand({
+      playerStack: 1800, oppStack: 1200,
+      smallBlind: 10, bigBlind: 20, playerOnButton: false,
+    });
+    // Force pre-flop call + check then a flop:
+    P.applyAction(hand, { type: 'call', amount: 10 });
+    P.applyAction(hand, { type: 'check' });
+    // Pre-load a couple of intrusions
+    fireIntrusionsForState();
+    renderFight();
+    return;
+  }
+  if (stage === 'postgame') {
+    state.lastFinancials = {
+      venueName: "Joey's Knickerbocker Deli",
+      buyIn: 50,
+      cashAtDeparture: 450,
+      rake: 20,
+      partnerCut: 0,
+      netProfit: 380,
+      newBankroll: 1582,
+      cleanShowdownsWon: 5,
+      successfulCheats: 2,
+      rpGain: 64,
+      rpTotal: 355,
+      busted: false,
+      tournamentWin: false,
+      bestHandCat: 3,
+    };
+    renderPostGame(); showScreen('postgame');
+    return;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
