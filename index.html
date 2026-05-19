@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rounders: The Underground Circuit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ============================================================ -->
+  <!-- TOP STATUS BAR -->
+  <!-- ============================================================ -->
+  <div class="status-bar" id="status-bar">
+    <div class="status-cell">
+      <span class="status-label">Day / Time</span>
+      <span class="status-value" id="status-day">DAY 1 — EVENING</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-label">Cash</span>
+      <span class="status-value cash" id="status-cash">$100</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-label">Respect</span>
+      <span class="status-value rp" id="status-rp">0 RP · Chump</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-label">Active Loan</span>
+      <span class="status-value debt clean" id="status-loan">None</span>
+    </div>
+    <div class="status-cell menu">
+      <button data-screen="map">MAP</button>
+      <button data-screen="phone">PHONE</button>
+      <button data-screen="sheet">RAP SHEET</button>
+      <button id="advance-time">NEXT</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MAP SCREEN -->
+  <!-- ============================================================ -->
+  <div class="screen active" id="screen-map">
+    <div class="map-canvas" id="map-canvas">
+      <!-- Stylised NYC skyline silhouette -->
+      <svg class="skyline" viewBox="0 0 1600 400" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1a1410" stop-opacity="0.0"/>
+            <stop offset="100%" stop-color="#0a0808" stop-opacity="0.9"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#skyGrad)" d="M0,400 L0,260 L60,260 L60,200 L100,200 L100,240 L140,240 L140,180 L180,180 L180,150 L210,150 L210,210 L260,210 L260,170 L290,170 L290,230 L330,230 L330,140 L360,140 L360,200 L410,200 L410,260 L450,260 L450,180 L490,180 L490,220 L540,220 L540,140 L570,140 L570,90 L600,90 L600,160 L660,160 L660,220 L700,220 L700,260 L740,260 L740,180 L780,180 L780,140 L820,140 L820,200 L860,200 L860,160 L900,160 L900,240 L950,240 L950,180 L990,180 L990,140 L1020,140 L1020,200 L1060,200 L1060,240 L1100,240 L1100,180 L1140,180 L1140,260 L1180,260 L1180,200 L1220,200 L1220,150 L1260,150 L1260,220 L1310,220 L1310,180 L1350,180 L1350,260 L1400,260 L1400,200 L1440,200 L1440,160 L1480,160 L1480,240 L1520,240 L1520,200 L1560,200 L1560,260 L1600,260 L1600,400 Z"/>
+        <!-- Lit windows -->
+        <g fill="#d18a36" opacity="0.45">
+          <rect x="78" y="220" width="3" height="6"/>
+          <rect x="120" y="200" width="3" height="6"/>
+          <rect x="155" y="240" width="3" height="6"/>
+          <rect x="225" y="170" width="3" height="6"/>
+          <rect x="305" y="190" width="3" height="6"/>
+          <rect x="345" y="160" width="3" height="6"/>
+          <rect x="425" y="220" width="3" height="6"/>
+          <rect x="470" y="200" width="3" height="6"/>
+          <rect x="555" y="110" width="3" height="6"/>
+          <rect x="620" y="180" width="3" height="6"/>
+          <rect x="685" y="240" width="3" height="6"/>
+          <rect x="760" y="200" width="3" height="6"/>
+          <rect x="810" y="170" width="3" height="6"/>
+          <rect x="875" y="180" width="3" height="6"/>
+          <rect x="925" y="260" width="3" height="6"/>
+          <rect x="975" y="160" width="3" height="6"/>
+          <rect x="1045" y="220" width="3" height="6"/>
+          <rect x="1115" y="200" width="3" height="6"/>
+          <rect x="1170" y="220" width="3" height="6"/>
+          <rect x="1235" y="170" width="3" height="6"/>
+          <rect x="1295" y="240" width="3" height="6"/>
+          <rect x="1370" y="200" width="3" height="6"/>
+          <rect x="1455" y="180" width="3" height="6"/>
+          <rect x="1495" y="260" width="3" height="6"/>
+        </g>
+      </svg>
+      <div class="map-grain"></div>
+      <div id="venue-nodes"></div>
+      <div class="safety-net shylock" id="shylock-node">
+        <span class="net-title">[!] The Shylock</span>
+        <span class="net-sub">Loan Shark — Amsterdam Billiards</span>
+      </div>
+      <div class="safety-net phone" id="phone-node">
+        <span class="net-title">[?] Phone Booth</span>
+        <span class="net-sub">Call Family — $50 lifeline</span>
+      </div>
+    </div>
+    <div class="venue-panel empty" id="venue-panel">
+      <em>Select a venue node above to inspect.</em>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- POKER FIGHT MODE -->
+  <!-- ============================================================ -->
+  <div class="screen" id="screen-poker">
+    <div class="fight-header">
+      <div class="combatant">
+        <span class="sub">Opponent</span>
+        <span class="name" id="opp-name">—</span>
+        <div class="chip-bar opp"><div class="chip-fill" id="opp-chips-bar" style="width:100%"></div></div>
+        <span class="chip-label" id="opp-chips-label">$0</span>
+      </div>
+      <div class="focus-meter">
+        <span class="sub" id="hand-status">Pre-flop</span>
+        <span class="lbl">Focus Meter</span>
+        <div class="focus-bar"><div class="focus-fill" id="focus-fill" style="width:100%"></div></div>
+        <span class="chip-label" id="focus-label">100%</span>
+      </div>
+      <div class="combatant right">
+        <span class="sub">Mike McDermott</span>
+        <span class="name">YOU</span>
+        <div class="chip-bar"><div class="chip-fill" id="hero-chips-bar" style="width:100%"></div></div>
+        <span class="chip-label" id="hero-chips-label">$0</span>
+      </div>
+    </div>
+
+    <div class="fight-table">
+      <div class="opponent-portrait" id="opp-portrait">
+        <div class="portrait-face" id="opp-face">?</div>
+        <div class="tell-feed" id="tell-feed">
+          <span class="tell-marker">// Visual Feed</span>
+          <span id="tell-text">He waits. Stone-faced.</span>
+        </div>
+      </div>
+
+      <div class="felt">
+        <div class="pot-readout">
+          Pot
+          <span class="pot-amount" id="pot-amount">$0</span>
+        </div>
+        <div class="community-row" id="community-row"></div>
+        <div class="spacer"></div>
+        <div class="hole-row" id="hole-row"></div>
+      </div>
+
+      <div class="right-rail">
+        <div class="rail-header">Inner Monologue</div>
+        <div id="intrusions"></div>
+        <div class="rail-header" style="margin-top: 10px;">Table</div>
+        <div class="suspicion-bar">
+          <span>Suspicion</span>
+          <div class="suspicion-track"><div class="suspicion-fill" id="suspicion-fill" style="width:0%"></div></div>
+          <span id="suspicion-pct">0%</span>
+        </div>
+        <div class="rail-header" id="partner-rail-header" style="display:none;">Partner</div>
+        <div id="partner-signal" class="muted" style="font-size: 12px; display:none;"></div>
+      </div>
+    </div>
+
+    <div class="action-bar" id="action-bar"></div>
+
+    <div class="showdown hidden" id="showdown">
+      <div class="panel">
+        <h2 id="showdown-title">Showdown</h2>
+        <div class="hands">
+          <div class="hand-pile">
+            <span class="lbl">Opponent</span>
+            <div class="cards" id="showdown-opp"></div>
+            <span class="muted" id="showdown-opp-name"></span>
+          </div>
+          <div class="hand-pile">
+            <span class="lbl">You</span>
+            <div class="cards" id="showdown-hero"></div>
+            <span class="muted" id="showdown-hero-name"></span>
+          </div>
+        </div>
+        <p class="muted" id="showdown-reason"></p>
+        <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
+          <button class="btn primary" id="next-hand-btn">Next Hand</button>
+          <button class="btn" id="leave-table-btn">Leave Table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SHYLOCK -->
+  <!-- ============================================================ -->
+  <div class="screen modal-screen" id="screen-shylock">
+    <div class="modal-card">
+      <h1>The Shylock</h1>
+      <div class="modal-sub">Amsterdam Billiards — Back Office</div>
+      <div class="modal-body">
+        <div class="grama-portrait">
+          <div class="grama-avatar">G</div>
+          <div class="grama-dialogue">
+            <span class="name">GRAMA</span>
+            "McDermott. Back so soon? I can get you juice, but you know how this works. <strong style="color:var(--blood)">Strict timeline. Lump sum.</strong> No drips, no excuses."
+          </div>
+        </div>
+        <div class="loan-slider-block">
+          <label>Loan Principal</label>
+          <input type="range" id="loan-slider" min="100" max="2500" step="100" value="500" />
+        </div>
+        <div class="loan-readouts">
+          <div class="loan-stat">
+            <div class="lbl">Cash Now</div>
+            <div class="val amber" id="loan-principal">$500</div>
+          </div>
+          <div class="loan-stat">
+            <div class="lbl">Vigorish (Interest)</div>
+            <div class="val blood" id="loan-vig">$100</div>
+          </div>
+          <div class="loan-stat">
+            <div class="lbl">Lump-Sum Owed</div>
+            <div class="val blood" id="loan-total">$600</div>
+          </div>
+        </div>
+        <div class="loan-readouts">
+          <div class="loan-stat" style="grid-column: span 3;">
+            <div class="lbl">Deadline</div>
+            <div class="val" id="loan-deadline">Day 4</div>
+          </div>
+        </div>
+        <div class="warning-bar">
+          <strong>CONSEQUENCE WARNING:</strong> Failure to pay in full results in: <span class="blood">-150 RP</span>, "Bruised Hands" debuff (Focus Meter halved for 3 days), temporary venue lockouts.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" id="loan-accept">Accept Terms — Take Cash</button>
+        <button class="btn ghost"   id="loan-decline">Leave Empty-Handed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TEAM-UP -->
+  <!-- ============================================================ -->
+  <div class="screen modal-screen" id="screen-teamup">
+    <div class="modal-card">
+      <h1>Pre-Game Strategy</h1>
+      <div class="modal-sub" id="teamup-sub">Choose Your Partner</div>
+      <div class="modal-body">
+        <div class="partner-grid" id="partner-grid"></div>
+        <div class="warning-bar" id="partner-summary" style="display:none;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" id="teamup-confirm" disabled>Confirm Team-Up &amp; Enter Venue</button>
+        <button class="btn ghost"   id="teamup-skip">Go It Alone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- PHONE (NOKIA 5110) -->
+  <!-- ============================================================ -->
+  <div class="screen modal-screen" id="screen-phone">
+    <div class="nokia">
+      <div class="nokia-screen">
+        <div class="nokia-bar">
+          <span>NOKIA 5110 — INBOX</span>
+          <span>SIG <span id="nokia-sig">■■■■□</span></span>
+        </div>
+        <div id="nokia-messages"></div>
+      </div>
+      <div class="nokia-keys">
+        <div class="nokia-key" data-action="reply">[1] REPLY</div>
+        <div class="nokia-key" data-action="family">[2] CALL FAMILY</div>
+        <div class="nokia-key" data-action="back">[3] BACK</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CHARACTER SHEET ("THE RAP SHEET") -->
+  <!-- ============================================================ -->
+  <div class="screen modal-screen" id="screen-sheet">
+    <div class="modal-card">
+      <h1>The Rap Sheet</h1>
+      <div class="modal-sub">Mike McDermott — <span id="sheet-rank">Street Grinder</span> · Unspent Points: <span id="sheet-points">0</span></div>
+      <div class="modal-body">
+        <div class="sheet-section">
+          <h3>Psyche Stats — Inner Monologue Voices</h3>
+          <div id="sheet-psyche"></div>
+        </div>
+        <div class="sheet-section">
+          <h3>Physical Stats</h3>
+          <div id="sheet-physical"></div>
+        </div>
+        <div class="sheet-section">
+          <h3>Perks Unlocked</h3>
+          <div class="perk-list" id="sheet-perks"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" data-screen="map">Back to Map</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- POST-GAME -->
+  <!-- ============================================================ -->
+  <div class="screen modal-screen" id="screen-postgame">
+    <div class="modal-card">
+      <h1 id="postgame-title">Session Over</h1>
+      <div class="modal-sub" id="postgame-venue"></div>
+      <div class="modal-body">
+        <div class="report-grid">
+          <div class="report-card">
+            <h3>Financial Report</h3>
+            <div id="financial-report"></div>
+          </div>
+          <div class="report-card">
+            <h3>Reputation Report</h3>
+            <div id="reputation-report"></div>
+          </div>
+        </div>
+        <div class="reflection">
+          <h3>Post-Game Reflection</h3>
+          <div id="reflection-list"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" data-screen="map">Collect Chips &amp; Exit to Map</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="poker.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
