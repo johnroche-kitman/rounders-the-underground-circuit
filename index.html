@@ -119,6 +119,17 @@
       </div>
 
       <div class="right-rail">
+        <!-- Worm side panel: always visible when partner is at the table.
+             Reflects his current signal portrait + last signal line. -->
+        <div class="worm-side-panel" id="worm-side-panel" style="display:none;">
+          <div class="ws-header">
+            <span class="ws-eyebrow">Partner Signals</span>
+            <span class="ws-stack" id="ws-stack">$0</span>
+          </div>
+          <div class="ws-portrait" id="ws-portrait"></div>
+          <div class="ws-signal" id="ws-signal">Watching the table.</div>
+          <button class="btn ghost ws-stop" id="worm-stop-btn">Tell Worm to cool it</button>
+        </div>
         <div class="rail-header">Inner Monologue</div>
         <div id="intrusions"></div>
         <div class="rail-header" style="margin-top: 10px;">Table</div>
@@ -127,7 +138,6 @@
           <div class="suspicion-track"><div class="suspicion-fill" id="suspicion-fill" style="width:0%"></div></div>
           <span id="suspicion-pct">0%</span>
         </div>
-        <button class="btn ghost worm-stop" id="worm-stop-btn" style="display:none;">Tell Worm to cool it</button>
       </div>
     </div>
 

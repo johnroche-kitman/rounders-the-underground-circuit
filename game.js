@@ -910,25 +910,63 @@ function setWormMood(mood) { const f = $('#worm-face'); if (f) setMoodOn(f, mood
 
 // ---------- Worm panel + signaling -----------------------------------------
 
-// Worm is now a felt seat. This just wires the mute control in the right rail.
+// Wire the compact Worm side panel (right rail) + preload his portraits.
 function setupWormPanel(partner) {
+  const panel = $('#worm-side-panel');
   const btn = $('#worm-stop-btn');
-  if (!btn) return;
-  if (!partner) { btn.style.display = 'none'; return; }
-  btn.style.display = 'block';
+  if (!panel || !btn) return;
+  if (!partner) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'flex';
+  panel.classList.toggle('muted', !!state.session.wormMuted);
+  // Preload portraits in the side panel
+  const portrait = $('#ws-portrait');
+  portrait.innerHTML = '';
+  partner.portraitMoods.forEach(mood => {
+    const img = document.createElement('img');
+    img.className = 'face-mood';
+    img.dataset.mood = mood;
+    img.src = partner.portraitDir + mood + '.jpg';
+    img.alt = '';
+    portrait.appendChild(img);
+  });
+  setMoodOn(portrait, 'waiting');
+  $('#ws-signal').textContent = 'Watching the table.';
   btn.disabled = state.session.wormMuted;
   btn.textContent = state.session.wormMuted ? 'Signals muted' : 'Tell Worm to cool it';
   btn.onclick = () => {
     state.session.wormMuted = true;
     btn.disabled = true;
     btn.textContent = 'Signals muted';
+    panel.classList.add('muted');
+    $('#ws-signal').textContent = 'You caught his eye. He nods. No more signals.';
     const pIdx = partnerIdx();
     if (pIdx >= 0) speakLine(pIdx, 'You catch his eye. He nods. No more signals.');
     saveState();
   };
 }
 
-function renderWormPanel() { /* no-op — Worm renders as a felt seat now */ }
+function renderWormPanel() {
+  const pIdx = partnerIdx();
+  const stackEl = $('#ws-stack');
+  if (pIdx >= 0 && hand && stackEl) {
+    stackEl.textContent = dollars(hand.seats[pIdx].stack);
+  }
+}
+
+// Update the side panel when Worm signals — mood + line + pulse
+function flashWormSidePanel(signal) {
+  const panel = $('#worm-side-panel');
+  const portrait = $('#ws-portrait');
+  if (!panel || !portrait) return;
+  setMoodOn(portrait, signal.mood);
+  $('#ws-signal').textContent = signal.text;
+  panel.classList.remove('signaling');
+  void panel.offsetWidth;
+  panel.classList.add('signaling');
+}
 
 function fireWormSignal(streetName) {
   const pIdx = partnerIdx();
@@ -953,7 +991,9 @@ function fireWormSignal(streetName) {
   const sig = D.WORM_SIGNALS[bucket] || D.WORM_SIGNALS.weak;
   state.session.wormLastSignal = sig;
   state.session.suspicion = Math.min(1, state.session.suspicion + (partner.suspicionPerSignal || 0));
-  // Show the signal as Worm's dialog bubble line (focus shifts to him)
+  // Right-rail side panel: pulse + mood update + signal line
+  flashWormSidePanel(sig);
+  // Left rail: also push focus to Worm with the signal as his dialog bubble line
   speakLine(pIdx, sig.text);
 }
 

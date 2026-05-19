@@ -1021,7 +1021,83 @@ body {
   color: var(--paper-faint);
 }
 
-/* Worm panel */
+/* Worm side panel (compact partner signal indicator in the right rail) */
+.worm-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+  margin-bottom: 4px;
+}
+.worm-side-panel.muted { border-left-color: var(--paper-faint); opacity: 0.7; }
+.worm-side-panel .ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.worm-side-panel .ws-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-faint);
+}
+.worm-side-panel .ws-stack {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--neon);
+}
+.worm-side-panel .ws-portrait {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: linear-gradient(160deg, #3a3a52 0%, #100c08 100%);
+}
+.worm-side-panel .ws-portrait img.face-mood {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  opacity: 0;
+  transition: opacity 0.45s ease-in-out;
+  filter: contrast(1.05) saturate(0.9);
+}
+.worm-side-panel .ws-portrait img.face-mood.active { opacity: 1; }
+.worm-side-panel .ws-portrait::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 4px);
+  pointer-events: none;
+}
+.worm-side-panel.signaling .ws-portrait {
+  box-shadow: 0 0 0 2px var(--amber), 0 0 18px rgba(209,138,54,0.55);
+  animation: wormSignalPulse 0.9s ease-out;
+}
+@keyframes wormSignalPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(209,138,54,0.9); }
+  60%  { box-shadow: 0 0 0 8px rgba(209,138,54,0.0); }
+  100% { box-shadow: 0 0 0 2px var(--amber), 0 0 18px rgba(209,138,54,0.55); }
+}
+.worm-side-panel .ws-signal {
+  font-style: italic;
+  font-size: 12px;
+  color: var(--paper-dim);
+  line-height: 1.45;
+  min-height: 36px;
+}
+.worm-side-panel .ws-stop {
+  font-size: 10px;
+  padding: 8px 12px;
+}
+
+/* Legacy worm panel selectors (kept for back-compat — no DOM uses them) */
 .worm-panel {
   display: flex;
   flex-direction: column;
