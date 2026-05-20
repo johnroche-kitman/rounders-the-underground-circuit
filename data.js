@@ -10,6 +10,8 @@ const DEALERS = {
     label: 'Dealer',
     description: 'She\'s busy. Can\'t get her attention.',
     portraitTint: '#3a4a4a',
+    portraitDir: 'michelle/',
+    portraitMoods: ['neutral','confident','resigned','shocked','thinking','observing','surprised','focused','anxious','suspicious','defeated','judging'],
     interactive: false,
   },
   henry: {

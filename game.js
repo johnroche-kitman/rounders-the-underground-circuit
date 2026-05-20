@@ -256,12 +256,15 @@ function buildCharacterCard(seat) {
 
 function buildDealerCard(def) {
   const tint = def.portraitTint || '#3a4a3a';
+  const portrait = (def.portraitDir && def.portraitMoods)
+    ? `<img src="${def.portraitDir}neutral.jpg" alt="" />`
+    : `<span class="tp-initials">${initialsFor(def.name)}</span>`;
   return `
     <div class="tp-card" data-kind="dealer" style="--portrait-tint: ${tint}">
       <span class="tp-seat-label">DEALER</span>
       <div class="tp-name">${def.name}</div>
       <div class="tp-desc">${escapeHtml(def.label || 'Dealer')}</div>
-      <div class="tp-portrait"><span class="tp-initials">${initialsFor(def.name)}</span></div>
+      <div class="tp-portrait">${portrait}</div>
       <div class="tp-npc-line">${escapeHtml(def.description || '')}</div>
       <div class="tp-choices"></div>
     </div>
