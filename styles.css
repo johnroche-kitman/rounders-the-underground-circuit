@@ -1402,21 +1402,50 @@ body {
   font-weight: 700;
 }
 
-/* COLD READ tag — small monospace text on the focused opp's portrait */
+/* COLD READ tag — clickable button on the focused opp's portrait.
+   Inactive (ready): dim, hoverable. Done (already read): bright. */
 .cold-read-badge {
   position: absolute;
-  top: 14px; right: 16px;
+  top: 12px; right: 12px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--paper);
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(232,217,192,0.25);
+  color: var(--paper-dim);
+  padding: 6px 10px;
   z-index: 4;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.95);
-  animation: dialogFade 0.4s ease-out;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.1;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.cold-read-badge .sub {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--paper-faint);
+  font-weight: 400;
+}
+.cold-read-badge.ready:hover {
+  background: rgba(184,232,55,0.12);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+.cold-read-badge.ready:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cold-read-badge.done {
+  background: rgba(184,232,55,0.18);
+  border-color: var(--neon);
+  color: var(--neon);
+  text-shadow: 0 0 12px rgba(184,232,55,0.6);
+  cursor: default;
 }
 .opponent-portrait { position: relative; }
 

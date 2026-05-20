@@ -820,18 +820,13 @@ function renderActionBar() {
   foldBtn.addEventListener('click', () => playerAct({ type: 'fold' }));
   bar.appendChild(foldBtn);
 
-  // 4) CHEAT stack — Read Intent + Muck + Peek (3 stacked)
+  // 4) CHEAT stack — Muck + Peek (Read Intent merged into the COLD READ tag)
   const stack = document.createElement('div');
   stack.className = 'cheat-stack';
   const peekRisk = Math.round(cheatRiskPct('peek') * 100);
   const muckRisk = Math.round(cheatRiskPct('muck') * 100);
   const peekDisabled = !heroIsDealer || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   const muckDisabled = !heroIsDealer || !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
-  const readBtn = document.createElement('button');
-  readBtn.className = 'action-btn special';
-  readBtn.disabled = state.focus < 20;
-  readBtn.innerHTML = `<span>READ INTENT</span><span class="sub">FOCUS -20</span>`;
-  readBtn.addEventListener('click', readIntent);
   const muckBtn = document.createElement('button');
   muckBtn.className = 'action-btn cheat';
   muckBtn.disabled = muckDisabled;
@@ -842,7 +837,6 @@ function renderActionBar() {
   peekBtn.disabled = peekDisabled;
   peekBtn.innerHTML = `<span>CHEAT: Peek</span><span class="sub">${heroIsDealer ? peekRisk + '% RISK' : 'DEALER ONLY'}</span>`;
   peekBtn.addEventListener('click', cheatPeekTopCard);
-  stack.appendChild(readBtn);
   stack.appendChild(muckBtn);
   stack.appendChild(peekBtn);
   bar.appendChild(stack);
@@ -935,13 +929,23 @@ function refreshColdReadBadge() {
   if (!portrait) return;
   const existing = portrait.querySelector('.cold-read-badge');
   if (existing) existing.remove();
+  if (!hand || hand.finished) return;
   const idx = state.session?.focusedOppIdx;
   if (idx == null) return;
+  const focusedSeat = state.session.seats[idx];
+  // Worm doesn't need to be cold-read — he's your partner.
+  if (!focusedSeat || focusedSeat.kind !== 'opponent') return;
   const reads = state.session.coldReads || [];
-  if (!reads.includes(idx)) return;
-  const badge = document.createElement('div');
-  badge.className = 'cold-read-badge';
-  badge.textContent = 'COLD READ';
+  const done = reads.includes(idx);
+  const canRead = state.focus >= 20 && !done;
+  const badge = document.createElement('button');
+  badge.type = 'button';
+  badge.className = 'cold-read-badge' + (done ? ' done' : ' ready');
+  badge.innerHTML = done
+    ? 'COLD READ'
+    : `COLD READ<span class="sub">${canRead ? 'FOCUS -20' : 'NEED FOCUS'}</span>`;
+  badge.disabled = !canRead;
+  if (canRead) badge.addEventListener('click', readIntent);
   portrait.appendChild(badge);
 }
 
@@ -1382,6 +1386,7 @@ function readIntent() {
     : `He\'s on air. Maybe ${Math.round(oppEquity*100)}% equity. This is a bluff.`;
   pushIntrusion('WIRE', text);
   renderFight();
+  refreshColdReadBadge();
 }
 
 function cheatRiskPct(kind) {
