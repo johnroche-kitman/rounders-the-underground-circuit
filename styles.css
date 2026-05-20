@@ -1314,11 +1314,11 @@ body {
   z-index: 1;
 }
 
-/* Dialog bubble — speech text under portrait / namecard */
+/* Dialog bubble — speech text + numbered choices under portrait / namecard */
 .dialog-bubble {
-  border-top: 1px solid var(--line);
-  padding: 16px 20px 18px;
-  background: rgba(0,0,0,0.55);
+  border-top: none;
+  padding: 18px 22px 20px;
+  background: transparent;
   position: relative;
   min-height: 80px;
 }
@@ -1327,28 +1327,18 @@ body {
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--amber);
+  color: var(--paper-dim);
   display: block;
   margin-bottom: 6px;
 }
 .dialog-bubble .dialog-text {
   font-family: 'Playfair Display', serif;
   font-size: 15px;
-  font-style: italic;
-  color: var(--paper);
-  line-height: 1.45;
-  position: relative;
-  padding-left: 14px;
-}
-.dialog-bubble .dialog-text::before {
-  content: '\201C';
-  position: absolute;
-  left: -2px; top: -10px;
-  font-size: 40px;
   font-style: normal;
-  color: var(--amber);
-  opacity: 0.7;
-  line-height: 1;
+  font-weight: 400;
+  color: var(--paper);
+  line-height: 1.5;
+  position: relative;
 }
 .dialog-bubble .dialog-text.fade {
   animation: dialogFade 0.4s ease-out;
@@ -1358,109 +1348,112 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Secret Objective dialog — opponent confides in you with a side-deal */
+/* Secret Objective dialog — typographic, no buttons */
 .dialog-objective {
   display: none;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   animation: dialogFade 0.45s ease-out;
 }
 .dialog-bubble.objective .dialog-text   { display: none; }
 .dialog-bubble.objective .dialog-objective { display: flex; }
 .dialog-objective .obj-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--neon);
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--paper);
   font-style: normal;
+  letter-spacing: 0.01em;
+  margin-bottom: 2px;
 }
 .dialog-objective .obj-text {
   font-family: 'Playfair Display', serif;
-  font-size: 13px;
-  font-style: italic;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
   color: var(--paper);
   line-height: 1.5;
 }
 .dialog-objective .obj-choices {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 4px;
+  margin-top: 12px;
 }
 .dialog-objective .obj-choice {
   text-align: left;
   background: transparent;
-  border: 1px solid var(--line-strong);
-  color: var(--paper);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: all 0.15s;
+  border: none;
+  color: #9d2004;
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 400;
   font-style: normal;
+  letter-spacing: 0;
+  padding: 3px 0;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.1s;
+  line-height: 1.4;
 }
 .dialog-objective .obj-choice:hover {
-  background: rgba(209,138,54,0.12);
-  border-color: var(--amber);
-  color: var(--amber);
+  color: #d4451f;
+  transform: translateX(2px);
 }
 .dialog-objective .obj-choice .num {
-  color: var(--sick-yellow);
-  margin-right: 8px;
+  color: var(--paper);
+  margin-right: 6px;
   font-weight: 700;
 }
 
-/* Turn dialog choices (shared styling with the objective choices) */
+/* Turn dialog — npc spoken line + numbered text choices */
 .dialog-bubble.turn-dialog .dialog-text {
   display: block;
   font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 15px;
   color: var(--paper);
   line-height: 1.5;
   position: relative;
-  padding-left: 10px;
 }
 .dialog-choices {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 4px;
+  margin-top: 14px;
   animation: dialogFade 0.35s ease-out;
 }
 .dialog-choices .obj-choice {
   text-align: left;
   background: transparent;
-  border: 1px solid var(--line-strong);
-  color: var(--paper);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
+  border: none;
+  color: #9d2004;
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  padding: 3px 0;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, transform 0.1s;
+  line-height: 1.4;
 }
 .dialog-choices .obj-choice:hover {
-  background: rgba(209,138,54,0.12);
-  border-color: var(--amber);
-  color: var(--amber);
+  color: #d4451f;
+  transform: translateX(2px);
 }
 .dialog-choices .obj-choice .num {
-  color: var(--sick-yellow);
-  margin-right: 8px;
+  color: var(--paper);
+  margin-right: 6px;
   font-weight: 700;
 }
 .dialog-choices .obj-choice.play-on {
-  border-color: var(--neon);
   color: var(--neon);
   font-weight: 700;
+  margin-top: 6px;
 }
 .dialog-choices .obj-choice.play-on:hover {
-  background: rgba(184,232,55,0.12);
-  border-color: var(--neon);
-  color: var(--neon);
+  color: #d9ff5c;
 }
 .dialog-choices .obj-choice.play-on .num {
   color: var(--neon);

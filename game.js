@@ -604,11 +604,11 @@ function showObjectiveDialog() {
   const objEl = document.createElement('div');
   objEl.className = 'dialog-objective';
   objEl.innerHTML = `
-    <span class="obj-label">[ Secret Objective ]</span>
-    <p class="obj-text">${offer}</p>
+    <span class="obj-label">[Secret objective]</span>
+    <p class="obj-text">&ldquo;${offer}&rdquo;</p>
     <div class="obj-choices">
-      <button class="obj-choice" data-choice="decline"><span class="num">1.</span>No way. You're on your own.</button>
-      <button class="obj-choice" data-choice="accept"><span class="num">2.</span>Sure, lets do it.</button>
+      <button class="obj-choice" data-choice="decline"><span class="num">1.</span>&ldquo;No way. You&rsquo;re on your own.&rdquo;</button>
+      <button class="obj-choice" data-choice="accept"><span class="num">2.</span>&ldquo;Sure, lets do it.&rdquo;</button>
     </div>
   `;
   bubble.appendChild(objEl);
@@ -1395,9 +1395,9 @@ function renderTurnDialog(idx, npcLine, opts = {}) {
   // Remove any old objective/choice block
   const oldChoices = bubble.querySelector('.dialog-choices');
   if (oldChoices) oldChoices.remove();
-  // Set the spoken line as italic dialog-text
+  // Set the spoken line as serif dialog-text with curly quotes
   const textEl = bubble.querySelector('.dialog-text');
-  textEl.textContent = `“${npcLine}”`;
+  textEl.innerHTML = `&ldquo;${npcLine.replace(/'/g, '’')}&rdquo;`;
   textEl.classList.remove('fade');
   void textEl.offsetWidth;
   textEl.classList.add('fade');
@@ -1407,7 +1407,7 @@ function renderTurnDialog(idx, npcLine, opts = {}) {
   picks.forEach(({ ex, i }, n) => {
     const btn = document.createElement('button');
     btn.className = 'obj-choice';
-    btn.innerHTML = `<span class="num">${n+1}.</span>${ex.player}`;
+    btn.innerHTML = `<span class="num">${n+1}.</span>&ldquo;${ex.player.replace(/'/g, '’')}&rdquo;`;
     btn.addEventListener('click', () => {
       used.push(i);
       renderTurnDialog(idx, ex.npc);
@@ -1416,7 +1416,7 @@ function renderTurnDialog(idx, npcLine, opts = {}) {
   });
   const playOn = document.createElement('button');
   playOn.className = 'obj-choice play-on';
-  playOn.innerHTML = `<span class="num">${picks.length+1}.</span>[ Play on ]`;
+  playOn.innerHTML = `<span class="num">${picks.length+1}.</span>[Play on]`;
   playOn.addEventListener('click', continueCascade);
   choices.appendChild(playOn);
   bubble.appendChild(choices);
