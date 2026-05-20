@@ -715,7 +715,70 @@ function pickDialog(opp, situation) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// Secret objectives — opps occasionally pull the hero aside with a side-deal.
+// The {target} placeholder is filled with a randomly-picked OTHER opponent
+// at the table when the objective is offered.
+const SECRET_OBJECTIVES = {
+  deli_grinder: {
+    offer: 'Listen, McDermott. Do me a favour tonight. I want {target} bled dry. You target him, you forget anyone else exists, and there\'ll be something in it for you.',
+    rewardRP: 35,
+    rewardCash: 80,
+    declineLine: 'Hmph. I see how it is.',
+    acceptLine: 'Good boy. Now go to work.',
+  },
+  pizza_tony: {
+    offer: 'Hey kid, between you and me — {target} owes me money. If he loses tonight, I get my cut. You help me out, I\'ll cut you in. Maybe even tell you his tell if you\'re smart enough to ask.',
+    rewardRP: 25,
+    rewardCash: 60,
+    declineLine: 'Suit yourself.',
+    acceptLine: 'Atta boy. Bury him.',
+  },
+  cab_driver_pete: {
+    offer: 'McDermott, I drove {target} home last week. He cried about his wife the whole way. Man\'s soft right now. Take his stack tonight and there\'s a tip in it for you.',
+    rewardRP: 30,
+    rewardCash: 70,
+    declineLine: 'Eh. Worth asking.',
+    acceptLine: 'Atta boy. Make him cry again.',
+  },
+  detective_callahan: {
+    offer: 'McDermott. I need {target} broken tonight. Take his roll, I\'ll forget I ever saw your face in here. Tell me how he plays and I\'ll forget twice.',
+    rewardRP: 80,
+    rewardCash: 250,
+    declineLine: 'Hm. Smart. You don\'t want to owe me.',
+    acceptLine: 'Good. Make it look natural.',
+  },
+  detective_torres: {
+    offer: 'Yo McDermott. You see {target}? He\'s got a wire under that jacket. Or — he\'s got a tell I can\'t crack. Bust him for me tonight.',
+    rewardRP: 60,
+    rewardCash: 180,
+    declineLine: 'Whatever, McDermott.',
+    acceptLine: 'Good. Eat him alive.',
+  },
+  captain_ortiz: {
+    offer: 'McDermott. I want a word. {target} is going to embarrass this department if he wins tonight. Take him out and there\'s a quiet thank-you waiting.',
+    rewardRP: 70,
+    rewardCash: 200,
+    declineLine: 'Understood. We didn\'t speak.',
+    acceptLine: 'Discreet. I appreciate that.',
+  },
+  trust_fund_kid: {
+    offer: 'McDermott, dear boy. {target} insulted my mother at the club. I want him *gutted* tonight. Make it happen and I\'ll wire you something for the trouble.',
+    rewardRP: 50,
+    rewardCash: 400,
+    declineLine: 'Suit yourself. The offer was generous.',
+    acceptLine: 'Wonderful. Make him weep.',
+  },
+  silk_glove: {
+    offer: 'McDermott. There is unfinished business between {target} and me. He should not leave this room with chips. You understand. There would be — appreciation.',
+    rewardRP: 100,
+    rewardCash: 600,
+    declineLine: 'Pity. I had hopes.',
+    acceptLine: 'Then we have an understanding.',
+  },
+};
+
 window.GameData = {
   VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
+  SECRET_OBJECTIVES,
   RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand, pickDialog,
 };

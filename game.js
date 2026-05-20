@@ -511,6 +511,8 @@ function startNewHand(firstHand) {
 
   state.session.handsPlayed++;
   state.handsPlayedTotal++;
+  // Reset per-hand cold reads
+  state.session.coldReads = [];
 
   // Build players[] for the engine. Stacks are pulled from session.
   const players = state.session.seats.map((s, i) => ({
@@ -546,7 +548,118 @@ function startNewHand(firstHand) {
     pushDialog(primaryIdx, 'hand_start');
   }
   fireWormSignal('preflop');
+  // After the first hand, one of the opps may pull the hero aside with a side-deal
+  if (state.session.handsPlayed === 2 && !state.session.objectiveOffered) {
+    setTimeout(tryOfferSecretObjective, 600);
+  }
   scheduleAITurn();
+}
+
+// ---------- Secret Objective ------------------------------------------------
+
+function tryOfferSecretObjective() {
+  if (!state.session || state.session.objectiveOffered) return;
+  if (!isMultiOpp()) return;
+  const oppIdxs = allOpponentIdxs();
+  if (oppIdxs.length < 2) return;
+  const candidates = oppIdxs.filter(i => {
+    const seat = state.session.seats[i];
+    return seat && D.SECRET_OBJECTIVES[seat.opponentId];
+  });
+  if (!candidates.length) return;
+  const askerIdx = candidates[Math.floor(Math.random() * candidates.length)];
+  const targets = oppIdxs.filter(i => i !== askerIdx);
+  if (!targets.length) return;
+  const targetIdx = targets[Math.floor(Math.random() * targets.length)];
+  state.session.objectiveOffered = true;
+  state.session.pendingObjective = { askerIdx, targetIdx };
+  setFocusedOpp(askerIdx);
+  renderFocusedOppLeftRail();
+  showObjectiveDialog();
+}
+
+function showObjectiveDialog() {
+  const obj = state.session?.pendingObjective;
+  if (!obj) return;
+  const askerSeat = state.session.seats[obj.askerIdx];
+  const targetSeat = state.session.seats[obj.targetIdx];
+  const def = D.SECRET_OBJECTIVES[askerSeat.opponentId];
+  if (!def) return;
+  // Use the target's first name for natural reading
+  const firstName = (targetSeat.name.match(/[A-Z][a-z]+/) || ['him'])[0];
+  const offer = def.offer.replace('{target}', firstName);
+  const bubble = document.querySelector('.dialog-bubble');
+  if (!bubble) return;
+  bubble.classList.add('objective');
+  // Re-render the bubble's contents — append the objective sub-element if not already there
+  let speaker = bubble.querySelector('.dialog-speaker');
+  if (!speaker) {
+    bubble.innerHTML = '<span class="dialog-speaker"></span><span class="dialog-text"></span>';
+    speaker = bubble.querySelector('.dialog-speaker');
+  }
+  // Remove any existing objective block
+  const old = bubble.querySelector('.dialog-objective');
+  if (old) old.remove();
+  speaker.textContent = askerSeat.name;
+  const objEl = document.createElement('div');
+  objEl.className = 'dialog-objective';
+  objEl.innerHTML = `
+    <span class="obj-label">[ Secret Objective ]</span>
+    <p class="obj-text">${offer}</p>
+    <div class="obj-choices">
+      <button class="obj-choice" data-choice="decline"><span class="num">1.</span>No way. You're on your own.</button>
+      <button class="obj-choice" data-choice="accept"><span class="num">2.</span>Sure, lets do it.</button>
+    </div>
+  `;
+  bubble.appendChild(objEl);
+  objEl.querySelector('[data-choice="decline"]').addEventListener('click', () => resolveObjective('decline'));
+  objEl.querySelector('[data-choice="accept"]').addEventListener('click', () => resolveObjective('accept'));
+}
+
+function resolveObjective(choice) {
+  const obj = state.session?.pendingObjective;
+  if (!obj) return;
+  const askerSeat = state.session.seats[obj.askerIdx];
+  const targetSeat = state.session.seats[obj.targetIdx];
+  const def = D.SECRET_OBJECTIVES[askerSeat.opponentId];
+  state.session.pendingObjective = null;
+  const bubble = document.querySelector('.dialog-bubble');
+  if (bubble) {
+    bubble.classList.remove('objective');
+    const objEl = bubble.querySelector('.dialog-objective');
+    if (objEl) objEl.remove();
+  }
+  if (choice === 'accept') {
+    state.session.activeObjective = {
+      askerIdx: obj.askerIdx,
+      targetIdx: obj.targetIdx,
+      askerName: askerSeat.name,
+      targetName: targetSeat.name,
+      askerOppId: askerSeat.opponentId,
+      reward: { rp: def.rewardRP, cash: def.rewardCash },
+    };
+    speakLine(obj.askerIdx, def.acceptLine);
+    setBanner(`SECRET DEAL: Bust ${targetSeat.name} → +${def.rewardRP} RP + ${dollars(def.rewardCash)}.`, 'good');
+  } else {
+    speakLine(obj.askerIdx, def.declineLine);
+  }
+  saveState();
+}
+
+// Award the objective reward when the target busts
+function checkObjectiveCompletion() {
+  const obj = state.session?.activeObjective;
+  if (!obj || !hand) return;
+  const targetSeat = hand.seats[obj.targetIdx];
+  if (!targetSeat || targetSeat.stack > 0) return;
+  // Target busted — award reward
+  state.rp += obj.reward.rp;
+  state.cash += obj.reward.cash;
+  state.session.objectiveCompleted = true;
+  state.session.activeObjective = null;
+  setBanner(`OBJECTIVE COMPLETE — ${obj.targetName} bust. +${obj.reward.rp} RP, +${dollars(obj.reward.cash)}.`, 'good');
+  updateStatusBar();
+  saveState();
 }
 
 function syncStacksFromHand() {
@@ -601,7 +714,8 @@ function renderFight() {
   // Opponent area: single big portrait vs. multi-opp felt seats + namecard
   if (isMultiOpp()) {
     // Auto-follow the current actor when it's NOT the hero
-    if (!hand.finished) {
+    // (except when a secret-objective is being offered — lock focus to the asker)
+    if (!hand.finished && !state.session.pendingObjective) {
       const cur = hand.toActIdx;
       const curSeat = state.session.seats[cur];
       if (curSeat && curSeat.kind !== 'hero') {
@@ -792,6 +906,23 @@ function renderFocusedOppLeftRail() {
   }
   // Refresh mood if portrait-sheet mode
   if (wantMode === 'portrait') refreshOpponentMood();
+  // COLD READ badge if hero has read this opp this hand
+  refreshColdReadBadge();
+}
+
+function refreshColdReadBadge() {
+  const portrait = $('#opp-portrait');
+  if (!portrait) return;
+  const existing = portrait.querySelector('.cold-read-badge');
+  if (existing) existing.remove();
+  const idx = state.session?.focusedOppIdx;
+  if (idx == null) return;
+  const reads = state.session.coldReads || [];
+  if (!reads.includes(idx)) return;
+  const badge = document.createElement('div');
+  badge.className = 'cold-read-badge';
+  badge.textContent = 'COLD READ';
+  portrait.appendChild(badge);
 }
 
 function renderFeltSeats() {
@@ -835,6 +966,17 @@ function renderFeltSeats() {
 function setFocusedOpp(idx) {
   if (!state.session) return;
   state.session.focusedOppIdx = idx;
+  // Sync the top-left header to the focused seat
+  if (isMultiOpp() && hand) {
+    const seat = hand.seats[idx];
+    if (seat) {
+      const startStack = state.session.startStack;
+      $('#opp-name').textContent = seat.name;
+      $('#opp-chips-label').textContent = dollars(seat.stack);
+      const bar = $('#opp-chips-bar');
+      if (bar) bar.style.width = Math.max(0, Math.min(100, (seat.stack / startStack) * 100)) + '%';
+    }
+  }
   renderFocusedOppNamecard();
 }
 
@@ -864,6 +1006,8 @@ function speakLine(idx, line) {
 }
 
 function speakDialog(speaker, line) {
+  // During a pending objective the bubble is dedicated to the offer
+  if (state.session?.pendingObjective) return;
   const speakerEl = $('#dialog-speaker');
   const textEl = $('#dialog-text');
   if (speakerEl) speakerEl.textContent = speaker;
@@ -1203,7 +1347,11 @@ function flashAIAction(action, idx) {
 function readIntent() {
   if (state.focus < 20) return;
   state.focus -= 20;
-  const oppSeat = hand.seats[opponentIdx()];
+  // Cold-read the focused opp (or primary opp in single-opp mode)
+  const targetIdx = isMultiOpp() ? (state.session.focusedOppIdx ?? opponentIdx()) : opponentIdx();
+  if (!state.session.coldReads) state.session.coldReads = [];
+  if (!state.session.coldReads.includes(targetIdx)) state.session.coldReads.push(targetIdx);
+  const oppSeat = hand.seats[targetIdx];
   const eq = P.estimateEquity(oppSeat.hole, hand.board, 250);
   const oppEquity = 1 - eq; // Their equity vs hero
   // Show actual bluff/strength read
@@ -1284,6 +1432,9 @@ function resolveHand() {
   // Update session bookkeeping
   if (hand.winnerIdxs.includes(heroIdx())) state.session.cleanShowdownsWon++;
   if (heroSeat.best) state.session.bestHandCat = Math.max(state.session.bestHandCat, heroSeat.best.category);
+
+  // Check if a secret-objective target busted this hand
+  checkObjectiveCompletion();
 
   // For showdown display, pick the most relevant "villain" — the winning non-hero,
   // or the best-handed live non-hero, falling back to the first opponent.
