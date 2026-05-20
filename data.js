@@ -715,6 +715,37 @@ function pickDialog(opp, situation) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// Generic player ↔ NPC exchange pool. Each NPC turn shows a couple of these
+// alongside [Play on]. Picking a player line triggers the paired NPC reaction.
+const TURN_EXCHANGES = [
+  { player: 'You\'re playing scared.',             npc: 'Maybe. Maybe not.' },
+  { player: 'You sweating yet?',                    npc: 'Cold as ice, kid.' },
+  { player: 'Just play.',                           npc: 'I just did.' },
+  { player: 'What\'s your story?',                  npc: 'Long shifts, bad coffee. Same as yours.' },
+  { player: 'You ever win these games?',            npc: 'I\'m sitting here, aren\'t I?' },
+  { player: 'Long way from home, friend.',          npc: 'It pays the bills.' },
+  { player: 'You\'re bleeding chips.',              npc: 'I noticed.' },
+  { player: 'I\'ll see you on the river.',          npc: 'I\'ll be there.' },
+  { player: 'Take a beat. You look tired.',         npc: 'I am tired.' },
+  { player: 'You don\'t play this hand right.',     npc: 'And you do?' },
+  { player: 'Nice shirt.',                          npc: '... Thanks?' },
+  { player: 'You owe Grama too?',                   npc: 'We all owe somebody.' },
+  { player: 'Three more hands, I\'m gone.',         npc: 'Sure. That\'s what we all say.' },
+  { player: 'You holding a monster?',               npc: 'Pay to find out.' },
+  { player: 'Tell me you\'re bluffing.',            npc: 'I\'m bluffing.' },
+  { player: 'You played this against me last week.',npc: 'And I lost. So I\'m back.' },
+];
+
+// Worm-flavoured exchanges — when partner is acting these surface instead.
+const WORM_TURN_EXCHANGES = [
+  { player: 'What did you see?',                    npc: 'Eyes up. I told you.' },
+  { player: 'Make it count.',                       npc: 'Always do, Mikey.' },
+  { player: 'Don\'t blow it.',                      npc: 'Hey. Trust the partner.' },
+  { player: 'Push him harder.',                     npc: 'Easy. Don\'t boil the soup.' },
+  { player: 'Hold back this hand.',                 npc: 'Smart. We pace ourselves.' },
+  { player: 'Are we splitting fifty-fifty?',        npc: 'Sixty-forty, my brother. As agreed.' },
+];
+
 // Secret objectives — opps occasionally pull the hero aside with a side-deal.
 // The {target} placeholder is filled with a randomly-picked OTHER opponent
 // at the table when the objective is offered.
@@ -779,6 +810,6 @@ const SECRET_OBJECTIVES = {
 
 window.GameData = {
   VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
-  SECRET_OBJECTIVES,
+  SECRET_OBJECTIVES, TURN_EXCHANGES, WORM_TURN_EXCHANGES,
   RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand, pickDialog,
 };

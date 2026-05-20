@@ -1324,9 +1324,12 @@ function playerAct(action) {
 
 function scheduleAITurn() {
   if (!hand || hand.finished || isHeroTurn()) return;
+  // Don't schedule while waiting on a turn-dialog or secret-objective
+  if (state.session.pendingTurn || state.session.pendingObjective) return;
   renderFight();
   setTimeout(() => {
     if (!hand || hand.finished || isHeroTurn()) return;
+    if (state.session.pendingTurn || state.session.pendingObjective) return;
     const idx = hand.toActIdx;
     const prevStreet = hand.street;
     const action = P.aiDecide(hand, idx);
@@ -1336,9 +1339,102 @@ function scheduleAITurn() {
     if (hand.finished) return resolveHand();
     if (hand.street !== prevStreet) fireWormSignal(hand.street);
     renderFight();
-    if (!isHeroTurn()) scheduleAITurn();
-    else fireIntrusionsForState();
+    // Pause the cascade — open the turn dialog with hero choices + [Play on]
+    openTurnDialog(idx, action);
   }, 900);
+}
+
+// ---------- NPC turn dialog (gates the cascade) -----------------------------
+
+function openTurnDialog(idx, action) {
+  if (!isMultiOpp()) {
+    // In heads-up there's no narrative cycle — auto-continue
+    return continueCascade();
+  }
+  const seat = state.session.seats[idx];
+  if (!seat || seat.kind === 'hero') return continueCascade();
+
+  state.session.pendingTurn = { idx, action, exchangeIdx: null };
+  setFocusedOpp(idx);
+  renderFocusedOppLeftRail();
+  // Initial line: NPC's situational dialogue tied to the action
+  const situation = action.type === 'raise' ? 'raised'
+    : action.type === 'call'  ? 'called'
+    : action.type === 'fold'  ? 'folded'
+    : 'neutral';
+  const charDef = characterFor(seat);
+  const initialLine = (charDef && D.pickDialog(charDef, situation))
+    || ({ raise: 'Bumping it.', call: 'I\'ll see it.', fold: 'Out.', check: 'Check.' })[action.type]
+    || '…';
+  renderTurnDialog(idx, initialLine);
+}
+
+function renderTurnDialog(idx, npcLine, opts = {}) {
+  const bubble = document.querySelector('.dialog-bubble');
+  if (!bubble) return;
+  const seat = state.session.seats[idx];
+  bubble.classList.remove('objective');
+  bubble.classList.add('turn-dialog');
+
+  // Pick 2 exchange options (different each time) from the right pool
+  const pool = (seat.kind === 'partner') ? D.WORM_TURN_EXCHANGES : D.TURN_EXCHANGES;
+  if (!state.session.pendingTurn.usedExchanges) state.session.pendingTurn.usedExchanges = [];
+  const used = state.session.pendingTurn.usedExchanges;
+  const available = pool
+    .map((ex, i) => ({ ex, i }))
+    .filter(({ i }) => !used.includes(i));
+  available.sort(() => Math.random() - 0.5);
+  const picks = available.slice(0, 2);
+
+  let speaker = bubble.querySelector('.dialog-speaker');
+  if (!speaker) {
+    bubble.innerHTML = '<span class="dialog-speaker"></span><span class="dialog-text"></span>';
+    speaker = bubble.querySelector('.dialog-speaker');
+  }
+  speaker.textContent = seat.name;
+  // Remove any old objective/choice block
+  const oldChoices = bubble.querySelector('.dialog-choices');
+  if (oldChoices) oldChoices.remove();
+  // Set the spoken line as italic dialog-text
+  const textEl = bubble.querySelector('.dialog-text');
+  textEl.textContent = `“${npcLine}”`;
+  textEl.classList.remove('fade');
+  void textEl.offsetWidth;
+  textEl.classList.add('fade');
+
+  const choices = document.createElement('div');
+  choices.className = 'dialog-choices';
+  picks.forEach(({ ex, i }, n) => {
+    const btn = document.createElement('button');
+    btn.className = 'obj-choice';
+    btn.innerHTML = `<span class="num">${n+1}.</span>${ex.player}`;
+    btn.addEventListener('click', () => {
+      used.push(i);
+      renderTurnDialog(idx, ex.npc);
+    });
+    choices.appendChild(btn);
+  });
+  const playOn = document.createElement('button');
+  playOn.className = 'obj-choice play-on';
+  playOn.innerHTML = `<span class="num">${picks.length+1}.</span>[ Play on ]`;
+  playOn.addEventListener('click', continueCascade);
+  choices.appendChild(playOn);
+  bubble.appendChild(choices);
+}
+
+function continueCascade() {
+  if (!state.session) return;
+  state.session.pendingTurn = null;
+  const bubble = document.querySelector('.dialog-bubble');
+  if (bubble) {
+    bubble.classList.remove('turn-dialog');
+    const choices = bubble.querySelector('.dialog-choices');
+    if (choices) choices.remove();
+  }
+  if (!hand) return;
+  if (hand.finished) return resolveHand();
+  if (!isHeroTurn()) scheduleAITurn();
+  else fireIntrusionsForState();
 }
 
 function flashAIAction(action, idx) {

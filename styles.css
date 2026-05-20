@@ -1412,6 +1412,60 @@ body {
   font-weight: 700;
 }
 
+/* Turn dialog choices (shared styling with the objective choices) */
+.dialog-bubble.turn-dialog .dialog-text {
+  display: block;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--paper);
+  line-height: 1.5;
+  position: relative;
+  padding-left: 10px;
+}
+.dialog-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  animation: dialogFade 0.35s ease-out;
+}
+.dialog-choices .obj-choice {
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dialog-choices .obj-choice:hover {
+  background: rgba(209,138,54,0.12);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.dialog-choices .obj-choice .num {
+  color: var(--sick-yellow);
+  margin-right: 8px;
+  font-weight: 700;
+}
+.dialog-choices .obj-choice.play-on {
+  border-color: var(--neon);
+  color: var(--neon);
+  font-weight: 700;
+}
+.dialog-choices .obj-choice.play-on:hover {
+  background: rgba(184,232,55,0.12);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+.dialog-choices .obj-choice.play-on .num {
+  color: var(--neon);
+}
+
 /* COLD READ tag — clickable button on the focused opp's portrait.
    Inactive (ready): dim, hoverable. Done (already read): bright. */
 .cold-read-badge {
