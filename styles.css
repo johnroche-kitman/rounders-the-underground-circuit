@@ -849,6 +849,20 @@ body {
 .community-row, .hole-row { display: flex; gap: 10px; }
 .hole-row { margin-top: auto; }
 
+/* Handwritten venue scrawl under the community cards on the felt */
+.felt-venue-label {
+  font-family: 'Just Me Again Down Here', cursive;
+  font-size: 28px;
+  color: #aaa3a3;
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin-top: 4px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Card faces */
 .card {
   width: 64px;
@@ -954,42 +968,50 @@ body {
   flex-shrink: 0;
   background: rgba(0,0,0,0.7);
   border-top: 1px solid var(--line-strong);
-  padding: 16px 24px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
 }
 .action-btn {
-  flex: 1;
-  min-width: 130px;
-  background: linear-gradient(180deg, #1f1a16 0%, #0e0c0a 100%);
-  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, #1f1a16 59.5%, #0f0d0b 100%);
+  border: 0.5px solid #4b443b;
   color: var(--paper);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
-  letter-spacing: 0.12em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 14px 14px;
+  padding: 14px 12px;
   cursor: pointer;
   transition: all 0.15s;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   text-align: center;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
 }
 .action-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #2a221b 0%, #1a1410 100%);
   border-color: var(--amber);
   color: var(--amber);
-  transform: translateY(-1px);
 }
 .action-btn .key {
   font-size: 9px;
   color: var(--paper-faint);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
+  font-weight: 400;
 }
-.action-btn.cheat { border-color: var(--bruise); color: var(--sick-yellow); }
+.action-btn .sub {
+  font-size: 10px;
+  color: #c9c9c9;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+}
+.action-btn.cheat { border-color: #902712; color: var(--paper); }
 .action-btn.cheat:hover:not(:disabled) {
   background: linear-gradient(180deg, #2a1410 0%, #1a0a08 100%);
   border-color: var(--blood);
@@ -1002,13 +1024,63 @@ body {
 }
 .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-.raise-controls { display: flex; gap: 8px; align-items: center; }
-.raise-controls input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--amber); }
-.raise-controls .raise-amt {
+/* RAISE primary — orange fill, black text, slider inside */
+.action-btn.raise-primary {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--ink);
+  font-weight: 700;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.action-btn.raise-primary:hover:not(:disabled) {
+  background: var(--sick-yellow);
+  border-color: var(--sick-yellow);
+  color: var(--ink);
+}
+.action-btn.raise-primary .raise-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+}
+.action-btn.raise-primary input[type="range"] {
+  flex: 1;
+  accent-color: var(--ink);
+  background: rgba(0,0,0,0.25);
+  height: 4px;
+}
+.action-btn.raise-primary .raise-amt {
   font-family: 'IBM Plex Mono', monospace;
-  color: var(--neon);
+  color: var(--ink);
   font-size: 14px;
-  min-width: 64px;
+  font-weight: 700;
+  min-width: 48px;
+  text-align: right;
+}
+.action-btn.raise-primary .commit-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--ink);
+  color: var(--amber);
+  border: none;
+  padding: 4px 14px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: stretch;
+}
+.action-btn.raise-primary .commit-btn:hover { color: var(--sick-yellow); }
+
+/* Right column — Read Intent + cheats stacked */
+.cheat-stack { display: flex; flex-direction: column; gap: 4px; }
+.cheat-stack .action-btn {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 10px;
+  font-size: 10px;
+  gap: 1px;
+}
+.cheat-stack .action-btn .sub {
+  font-size: 9px;
 }
 
 .suspicion-bar {
@@ -1330,20 +1402,20 @@ body {
   font-weight: 700;
 }
 
-/* COLD READ tag on the focused opp's portrait */
+/* COLD READ tag — small monospace text on the focused opp's portrait */
 .cold-read-badge {
   position: absolute;
-  top: 14px; right: 14px;
+  top: 14px; right: 16px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--neon);
-  background: rgba(0,0,0,0.75);
-  border: 1px solid var(--neon);
-  padding: 4px 10px;
+  color: var(--paper);
+  background: transparent;
+  border: none;
+  padding: 0;
   z-index: 4;
-  box-shadow: 0 0 16px rgba(184,232,55,0.4);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.95);
   animation: dialogFade 0.4s ease-out;
 }
 .opponent-portrait { position: relative; }
@@ -1368,10 +1440,11 @@ body {
   border-radius: 3px;
 }
 .felt-seat .seat-name {
-  font-family: 'Playfair Display', serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--paper);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--sick-yellow);
   text-shadow: 0 1px 4px rgba(0,0,0,0.95);
   max-width: 110px;
   overflow: hidden;
@@ -1387,17 +1460,19 @@ body {
 }
 .felt-seat .seat-bet {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--sick-yellow);
-  background: rgba(0,0,0,0.65);
-  padding: 2px 10px;
-  border: 1px solid var(--amber-deep);
-  border-radius: 12px;
+  background: transparent;
+  padding: 0;
+  border: none;
+  border-radius: 0;
   margin-top: 2px;
   min-height: 18px;
   opacity: 0;
   transition: opacity 0.3s;
   pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
 }
 .felt-seat.has-bet .seat-bet { opacity: 1; }
 .felt-seat.folded {
@@ -1418,18 +1493,21 @@ body {
 @keyframes seatPulse { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
 .felt-seat .seat-btn-pip {
   position: absolute;
-  top: -8px;
-  right: -10px;
-  width: 20px; height: 20px;
-  background: var(--paper);
-  color: var(--ink);
+  top: -6px;
+  right: -12px;
+  width: 22px; height: 18px;
+  background: linear-gradient(180deg, #d6c8a6 0%, #a99876 100%);
+  color: #1a1a1a;
   border-radius: 50%;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 9px;
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  letter-spacing: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  letter-spacing: 0.04em;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.7),
+    inset 0 -2px 3px rgba(0,0,0,0.25),
+    inset 0 1px 1px rgba(255,255,255,0.4);
   z-index: 2;
 }
 .felt-seat .seat-last-action {

@@ -707,6 +707,9 @@ function renderFight() {
   }
   $('#hole-row').innerHTML = '';
   hand.seats[heroIdx()].hole.forEach(c => $('#hole-row').appendChild(makeCardEl(c)));
+  const veLabel = $('#felt-venue-label');
+  const venueName = D.VENUES.find(v => v.id === state.session.venueId)?.name || '';
+  if (veLabel) veLabel.textContent = venueName;
 
   // Worm panel updates
   renderWormPanel();
@@ -766,66 +769,83 @@ function renderActionBar() {
   bar.innerHTML = '';
   if (hand.finished || !isHeroTurn()) return;
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  const acts = P.legalActions(hand, 0);
   const owed = P.callAmount(hand, 0);
+  const acts = P.legalActions(hand, 0);
+  const canRaise = acts.find(a => a.type === 'raise');
+  const canFold = acts.find(a => a.type === 'fold');
+  const heroIsDealer = hand.buttonIndex === heroIdx();
 
-  acts.forEach((a, i) => {
-    if (a.type === 'raise') {
-      const wrap = document.createElement('div');
-      wrap.className = 'action-btn';
-      wrap.style.flexDirection = 'column';
-      wrap.innerHTML = `
-        <span>RAISE</span>
-        <div class="raise-controls">
-          <input type="range" min="${a.min}" max="${a.max}" step="${venue.blinds.big}" value="${Math.min(Math.max(a.min, Math.floor(hand.pot * 0.66)), a.max)}" />
-          <span class="raise-amt"></span>
-        </div>
-        <button class="btn primary" style="margin-top: 6px;">Commit</button>
-      `;
-      const slider = wrap.querySelector('input');
-      const amt = wrap.querySelector('.raise-amt');
-      const updateAmt = () => { amt.textContent = dollars(+slider.value); };
-      slider.addEventListener('input', updateAmt);
-      updateAmt();
-      wrap.querySelector('button').addEventListener('click', () => playerAct({ type: 'raise', amount: +slider.value }));
-      bar.appendChild(wrap);
-      return;
-    }
-    const btn = document.createElement('button');
-    btn.className = 'action-btn';
-    let label = a.type.toUpperCase();
-    if (a.type === 'call') label = `CALL ${dollars(a.amount)}`;
-    btn.innerHTML = `<span>${label}</span><span class="key">[${i+1}]</span>`;
-    btn.addEventListener('click', () => playerAct(a));
-    bar.appendChild(btn);
+  // 1) CHECK/CALL — single button (auto-checks if nothing owed)
+  const ccBtn = document.createElement('button');
+  ccBtn.className = 'action-btn';
+  const ccLabel = owed === 0 ? 'CHECK/CALL' : 'CHECK/CALL';
+  ccBtn.innerHTML = `<span>${ccLabel}</span><span class="key">${owed === 0 ? '—' : dollars(owed)}</span>`;
+  ccBtn.addEventListener('click', () => {
+    const action = owed === 0 ? { type: 'check' } : { type: 'call', amount: owed };
+    playerAct(action);
   });
+  bar.appendChild(ccBtn);
 
-  // Special abilities
+  // 2) RAISE primary — slider + commit
+  if (canRaise) {
+    const wrap = document.createElement('div');
+    wrap.className = 'action-btn raise-primary';
+    const startVal = Math.min(Math.max(canRaise.min, Math.floor(hand.pot * 0.66)), canRaise.max);
+    wrap.innerHTML = `
+      <span>RAISE</span>
+      <div class="raise-row">
+        <input type="range" min="${canRaise.min}" max="${canRaise.max}" step="${venue.blinds.big}" value="${startVal}" />
+        <span class="raise-amt">${dollars(startVal)}</span>
+      </div>
+      <button class="commit-btn" type="button">COMMIT</button>
+    `;
+    const slider = wrap.querySelector('input');
+    const amt = wrap.querySelector('.raise-amt');
+    slider.addEventListener('input', () => { amt.textContent = dollars(+slider.value); });
+    wrap.querySelector('.commit-btn').addEventListener('click', () => playerAct({ type: 'raise', amount: +slider.value }));
+    bar.appendChild(wrap);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'action-btn';
+    ph.style.opacity = '0.3';
+    ph.innerHTML = '<span>RAISE</span><span class="key">—</span>';
+    bar.appendChild(ph);
+  }
+
+  // 3) FOLD
+  const foldBtn = document.createElement('button');
+  foldBtn.className = 'action-btn';
+  foldBtn.innerHTML = `<span>FOLD</span><span class="key">[3]</span>`;
+  foldBtn.disabled = !canFold;
+  foldBtn.addEventListener('click', () => playerAct({ type: 'fold' }));
+  bar.appendChild(foldBtn);
+
+  // 4) CHEAT stack — Read Intent + Muck + Peek (3 stacked)
+  const stack = document.createElement('div');
+  stack.className = 'cheat-stack';
+  const peekRisk = Math.round(cheatRiskPct('peek') * 100);
+  const muckRisk = Math.round(cheatRiskPct('muck') * 100);
+  const peekDisabled = !heroIsDealer || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
+  const muckDisabled = !heroIsDealer || !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   const readBtn = document.createElement('button');
   readBtn.className = 'action-btn special';
-  readBtn.innerHTML = `<span>READ INTENT</span><span class="key">Focus -20</span>`;
   readBtn.disabled = state.focus < 20;
+  readBtn.innerHTML = `<span>READ INTENT</span><span class="sub">FOCUS -20</span>`;
   readBtn.addEventListener('click', readIntent);
-  bar.appendChild(readBtn);
-
-  // Cheating — Peek and Muck. Only the dealer touches the deck, so these are
-  // only available when the hero seat (0) holds the button this hand.
-  const heroIsDealer = hand.buttonIndex === heroIdx();
-  const cheatPeek = document.createElement('button');
-  cheatPeek.className = 'action-btn cheat';
-  const peekRisk = Math.round(cheatRiskPct('peek') * 100);
-  cheatPeek.innerHTML = `<span>CHEAT: PEEK DECK</span><span class="key">${heroIsDealer ? peekRisk + '% risk' : 'DEALER ONLY'}</span>`;
-  cheatPeek.disabled = !heroIsDealer || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
-  cheatPeek.addEventListener('click', cheatPeekTopCard);
-  bar.appendChild(cheatPeek);
-
   const muckBtn = document.createElement('button');
   muckBtn.className = 'action-btn cheat';
-  const muckRisk = Math.round(cheatRiskPct('muck') * 100);
-  muckBtn.innerHTML = `<span>CHEAT: MUCK CARD</span><span class="key">${heroIsDealer ? muckRisk + '% risk' : 'DEALER ONLY'}</span>`;
-  muckBtn.disabled = !heroIsDealer || !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
+  muckBtn.disabled = muckDisabled;
+  muckBtn.innerHTML = `<span>CHEAT: Muck</span><span class="sub">${heroIsDealer ? muckRisk + '% RISK' : 'DEALER ONLY'}</span>`;
   muckBtn.addEventListener('click', cheatMuckCard);
-  bar.appendChild(muckBtn);
+  const peekBtn = document.createElement('button');
+  peekBtn.className = 'action-btn cheat';
+  peekBtn.disabled = peekDisabled;
+  peekBtn.innerHTML = `<span>CHEAT: Peek</span><span class="sub">${heroIsDealer ? peekRisk + '% RISK' : 'DEALER ONLY'}</span>`;
+  peekBtn.addEventListener('click', cheatPeekTopCard);
+  stack.appendChild(readBtn);
+  stack.appendChild(muckBtn);
+  stack.appendChild(peekBtn);
+  bar.appendChild(stack);
 }
 
 // ---------- Opponent layout (single big portrait vs. multi-opp stack) -------
