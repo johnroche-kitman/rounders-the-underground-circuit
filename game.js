@@ -177,57 +177,124 @@ function renderTablePreview() {
   const root = $('#table-preview');
   if (!root || !state.session) { showScreen('map'); return; }
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  const seatHtml = state.session.seats.map(seat => {
-    const oppDef = D.OPPONENTS[seat.opponentId] || {};
-    const partnerDef = seat.kind === 'partner' ? D.PARTNERS[state.partnerId] : null;
-    const desc = seat.kind === 'hero' ? 'You. Bankroll, focus, and one good night between you and Vegas.'
-      : seat.kind === 'partner' ? (partnerDef?.blurb || 'Your partner. Watch his signals.')
-      : (oppDef.label || '');
-    const role = seat.kind === 'hero' ? 'You' : seat.kind === 'partner' ? 'Partner' : 'Opponent';
-    const initials = initialsFor(seat.kind === 'hero' ? 'Mike McDermott' : seat.name);
-    // Joey has a portrait sheet — show his "neutral" face in the avatar
-    const avatarHtml = (oppDef.portraitDir && oppDef.portraitMoods)
-      ? `<div class="tp-avatar has-image"><img src="${oppDef.portraitDir}neutral.jpg" alt="" /></div>`
-      : (partnerDef?.portraitDir)
-        ? `<div class="tp-avatar has-image"><img src="${partnerDef.portraitDir}neutral.jpg" alt="" /></div>`
-        : `<div class="tp-avatar">${initials}</div>`;
-    const tint = seat.portraitTint || (partnerDef ? '#3a2a1a' : '#3a2a1a');
-    return `
-      <div class="tp-seat" data-kind="${seat.kind}" style="--portrait-tint: ${tint}">
-        <div class="tp-header">
-          ${avatarHtml}
-          <div class="tp-text">
-            <span class="tp-name">${seat.kind === 'hero' ? 'Mike McDermott' : seat.name}</span>
-            <span class="tp-role">${role}</span>
-          </div>
-        </div>
-        <div class="tp-desc">${desc}</div>
-      </div>
-    `;
-  }).join('');
 
-  const npcCount = state.session.seats.length - 1;
-  const partnerLine = state.partnerId ? ` · partnering with ${D.PARTNERS[state.partnerId].shortName || 'partner'}` : '';
+  // Per-session conversation state for each character
+  if (!state.session.preGameConv) state.session.preGameConv = {};
+
+  // Build cards: opponents + partner (if at table) + dealer (if any). Hero
+  // omitted — the page is about who you're meeting.
+  const cards = state.session.seats
+    .filter(s => s.kind !== 'hero')
+    .map(seat => buildCharacterCard(seat));
+  const dealerId = venue.dealer;
+  if (dealerId && D.DEALERS[dealerId]) {
+    cards.push(buildDealerCard(D.DEALERS[dealerId]));
+  }
+
   root.innerHTML = `
-    <div class="table-preview-head">
-      <span class="preview-eyebrow">${venue.name}</span>
-      <h1>Meet the Table</h1>
-      <span class="preview-sub">${npcCount} player${npcCount === 1 ? '' : 's'} sit across from you${partnerLine}.</span>
+    <div class="table-preview-top">
+      <div>
+        <button class="back-btn" id="preview-back">&larr; Back to venue</button>
+        <h1>Meet the players</h1>
+      </div>
+      <button class="take-seat-btn" id="preview-take-seat">Take your seat</button>
     </div>
-    <div class="table-preview-seats">${seatHtml}</div>
-    <div class="table-preview-actions">
-      <button class="btn" id="preview-back">&larr; Back to Venue</button>
-      <button class="btn primary" id="preview-take-seat">Take Your Seat</button>
-    </div>
+    <div class="table-preview-cards">${cards.join('')}</div>
   `;
   $('#preview-back').addEventListener('click', () => {
-    // Refund the buy-in and return to venue page
     state.cash += venue.buyIn;
     state.session = null;
     saveState();
     showScreen('venue');
   });
   $('#preview-take-seat').addEventListener('click', takeSeat);
+  $$('.tp-card .tp-choice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cardId = btn.dataset.cardId;
+      const pathStr = btn.dataset.path;
+      pickPreGameChoice(cardId, pathStr);
+    });
+  });
+}
+
+function buildCharacterCard(seat) {
+  const isPartner = seat.kind === 'partner';
+  const def = isPartner ? D.PARTNERS[state.partnerId] : D.OPPONENTS[seat.opponentId];
+  if (!def) return '';
+  const tint = seat.portraitTint || def.portraitTint || '#3a2a1a';
+  let label;
+  if (isPartner) label = 'PARTNER';
+  else {
+    const oppOrder = state.session.seats.filter(s => s.kind === 'opponent').map(s => s.id);
+    label = `SEAT ${oppOrder.indexOf(seat.id) + 1}`;
+  }
+  const desc = isPartner ? 'Your partner.' : (def.label || '');
+  const portrait = (def.portraitDir && def.portraitMoods)
+    ? `<img src="${def.portraitDir}neutral.jpg" alt="" />`
+    : `<span class="tp-initials">${initialsFor(seat.name)}</span>`;
+  const cardId = seat.id;
+  const tree = def.preGameDialog;
+  const conv = state.session.preGameConv[cardId] || { path: [] };
+  state.session.preGameConv[cardId] = conv;
+  const node = walkDialogTree(tree, conv.path);
+  const npcLine = node?.line || '';
+  const choicesHtml = (node?.branches || []).map((b, i) => {
+    const newPath = [...conv.path, i].join('.');
+    return `<button class="tp-choice" data-card-id="${cardId}" data-path="${newPath}"><span class="num">${i+1}.</span>&ldquo;${escapeHtml(b.player)}&rdquo;</button>`;
+  }).join('');
+  return `
+    <div class="tp-card" data-kind="${seat.kind}" style="--portrait-tint: ${tint}">
+      <span class="tp-seat-label">${label}</span>
+      <div class="tp-name">${isPartner ? def.name : seat.name}</div>
+      <div class="tp-desc">${escapeHtml(desc)}</div>
+      <div class="tp-portrait">${portrait}</div>
+      <div class="tp-npc-line">${npcLine ? '&ldquo;' + escapeHtml(npcLine) + '&rdquo;' : ''}</div>
+      <div class="tp-choices">${choicesHtml}</div>
+    </div>
+  `;
+}
+
+function buildDealerCard(def) {
+  const tint = def.portraitTint || '#3a4a3a';
+  return `
+    <div class="tp-card" data-kind="dealer" style="--portrait-tint: ${tint}">
+      <span class="tp-seat-label">DEALER</span>
+      <div class="tp-name">${def.name}</div>
+      <div class="tp-desc">${escapeHtml(def.label || 'Dealer')}</div>
+      <div class="tp-portrait"><span class="tp-initials">${initialsFor(def.name)}</span></div>
+      <div class="tp-npc-line">${escapeHtml(def.description || '')}</div>
+      <div class="tp-choices"></div>
+    </div>
+  `;
+}
+
+function walkDialogTree(tree, path) {
+  if (!tree) return null;
+  let line = tree.opening;
+  let branches = tree.branches || [];
+  for (const idx of path) {
+    const b = branches[idx];
+    if (!b) break;
+    line = b.npc;
+    branches = b.branches || [];
+  }
+  return { line, branches };
+}
+
+function pickPreGameChoice(cardId, pathStr) {
+  const conv = state.session.preGameConv?.[cardId];
+  if (!conv) return;
+  conv.path = pathStr.split('.').map(n => parseInt(n, 10));
+  renderTablePreview();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&rsquo;');
 }
 
 function renderVenue() {

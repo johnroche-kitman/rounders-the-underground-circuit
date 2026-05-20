@@ -292,107 +292,176 @@ body {
 .safety-net.vig .net-title { color: var(--blood); }
 .safety-net .net-sub { color: var(--paper-dim); font-size: 10px; }
 
-/* ----- Table Preview (#screen-table-preview) ----------------------------- */
+/* ----- Table Preview / Meet the Players (#screen-table-preview) ---------- */
 #screen-table-preview { flex-direction: column; background: var(--ink); }
 .table-preview {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 36px 48px 28px;
+  padding: 28px 36px 24px;
   overflow-y: auto;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(40,30,20,0.35) 0%, transparent 60%),
+    var(--ink);
 }
-.table-preview-head {
-  display: flex; flex-direction: column; gap: 8px;
-  margin-bottom: 28px;
+.table-preview-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
 }
-.table-preview-head .preview-eyebrow {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--paper-faint);
-}
-.table-preview-head h1 {
+.table-preview-top h1 {
   font-family: 'Playfair Display', serif;
-  font-size: 38px; color: var(--amber);
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--paper);
   letter-spacing: 0.01em;
 }
-.table-preview-head .preview-sub {
+.table-preview-top .take-seat-btn {
+  background: linear-gradient(180deg, #1f1a16 0%, #0f0d0b 100%);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px; color: var(--paper-dim);
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 18px 36px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.table-preview-seats {
+.table-preview-top .take-seat-btn:hover {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--ink);
+}
+.table-preview-top .back-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+}
+.table-preview-top .back-btn:hover { color: var(--amber); }
+
+/* Card row */
+.table-preview-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 18px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
 }
-.tp-seat {
+
+/* Each player card — beige textured background like the Figma */
+.tp-card {
   position: relative;
   display: flex; flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-  background: linear-gradient(160deg, var(--portrait-tint, #2a1c14) 0%, #0e0c0a 100%);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--portrait-tint, var(--amber));
-  min-height: 200px;
+  padding: 16px 16px 20px;
+  background:
+    linear-gradient(180deg, rgba(120,110,95,0.16) 0%, rgba(60,55,48,0.22) 100%),
+    var(--ink-2);
+  background-blend-mode: overlay;
+  background-color: #aea48f;
+  color: var(--ink);
+  min-height: 460px;
+  overflow: hidden;
 }
-.tp-seat::after {
+.tp-card::after {
   content: '';
   position: absolute; inset: 0;
-  background-image: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0 2px, transparent 2px 4px);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.025) 0 1px, transparent 1px 4px);
   pointer-events: none;
 }
-.tp-seat .tp-header {
-  display: flex; gap: 12px; align-items: center;
-  z-index: 1;
-}
-.tp-seat .tp-avatar {
-  width: 56px; height: 56px;
-  background: linear-gradient(160deg, var(--portrait-tint, #3a2a1a) 0%, #0a0808 100%);
-  border: 1px solid var(--line);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Playfair Display', serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: rgba(232,217,192,0.85);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.95);
-  flex-shrink: 0;
-}
-.tp-seat .tp-avatar.has-image {
-  padding: 0;
-  overflow: hidden;
-  font-size: 0;
-}
-.tp-seat .tp-avatar img {
-  width: 100%; height: 100%; object-fit: cover; object-position: center 28%;
-}
-.tp-seat .tp-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.tp-seat .tp-name {
-  font-family: 'Playfair Display', serif;
-  font-size: 17px; font-weight: 700; color: var(--amber);
-  text-shadow: 0 1px 6px rgba(0,0,0,0.95);
-}
-.tp-seat .tp-role {
+.tp-card .tp-seat-label {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--paper-faint);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(0,0,0,0.55);
+  margin-bottom: 4px;
 }
-.tp-seat .tp-desc {
-  font-size: 13px; color: var(--paper-dim); line-height: 1.45;
-  font-style: italic;
-  z-index: 1;
+.tp-card .tp-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
 }
-.tp-seat[data-kind="hero"]     { border-left-color: var(--neon); }
-.tp-seat[data-kind="hero"] .tp-name { color: var(--neon); }
-.tp-seat[data-kind="partner"]  { border-left-color: var(--amber); }
-.tp-seat[data-kind="opponent"] { /* uses portrait-tint */ }
-
-.table-preview-actions {
-  display: flex; gap: 14px; margin-top: auto; padding-top: 18px;
-  border-top: 1px solid var(--line);
+.tp-card .tp-desc {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-style: normal;
+  color: rgba(0,0,0,0.7);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  min-height: 36px;
 }
-.table-preview-actions .btn { padding: 18px 28px; font-size: 13px; flex: 1; text-align: center; }
-.table-preview-actions .btn.primary { flex: 2; }
+.tp-card .tp-portrait {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background: linear-gradient(160deg, var(--portrait-tint, #3a2a1a) 0%, #0a0808 100%);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.tp-card .tp-portrait img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  filter: contrast(1.04) saturate(0.95);
+}
+.tp-card .tp-portrait .tp-initials {
+  font-family: 'Playfair Display', serif;
+  font-size: 64px;
+  font-weight: 700;
+  color: rgba(232,217,192,0.5);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+}
+.tp-card .tp-npc-line {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  font-style: normal;
+  color: #1a1a1a;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.tp-card .tp-choices {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: auto;
+}
+.tp-card .tp-choice {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #9d2004;
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 3px 0;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.1s;
+  line-height: 1.4;
+}
+.tp-card .tp-choice:hover {
+  color: #d4451f;
+  transform: translateX(2px);
+}
+.tp-card .tp-choice .num {
+  color: #1a1a1a;
+  margin-right: 6px;
+  font-weight: 700;
+}
+.tp-card[data-kind="hero"] {
+  /* Hero card slightly different — green tint */
+  background-color: #95a98f;
+}
+.tp-card[data-kind="hero"] .tp-name { color: #0d2010; }
+.tp-card[data-kind="partner"] .tp-name { color: #2a1a08; }
+.tp-card[data-kind="dealer"] .tp-name { color: #0a1a1a; }
 
 /* ----- Venue full-page takeover (#screen-venue) -------------------------- */
 #screen-venue { flex-direction: column; background: var(--ink); }

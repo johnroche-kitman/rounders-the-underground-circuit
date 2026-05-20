@@ -3,6 +3,33 @@
 // Numbers and copy here are tuned for the Act 1 prototype loop only.
 // ============================================================================
 
+const DEALERS = {
+  michelle: {
+    id: 'michelle',
+    name: 'Michelle',
+    label: 'Dealer',
+    description: 'She\'s busy. Can\'t get her attention.',
+    portraitTint: '#3a4a4a',
+    interactive: false,
+  },
+  henry: {
+    id: 'henry',
+    name: 'Henry Doyle',
+    label: 'Dealer · Police union',
+    description: 'Won\'t make eye contact. He\'s here to deal cards, nothing else.',
+    portraitTint: '#2a3a4a',
+    interactive: false,
+  },
+  vance: {
+    id: 'vance',
+    name: 'Vance',
+    label: 'House dealer',
+    description: 'Hands like piano keys. Hasn\'t spoken all night.',
+    portraitTint: '#4a3a4a',
+    interactive: false,
+  },
+};
+
 const VENUES = [
   {
     id: 'deli',
@@ -21,6 +48,7 @@ const VENUES = [
     coords: { x: 56, y: 78 },
     opponentId: 'deli_grinder',
     opponents: ['deli_grinder', 'pizza_tony', 'cab_driver_pete'],
+    dealer: 'michelle',
     openings: ['day', 'night', 'late'],
     interiorImage: 'joey-deli.jpg',
   },
@@ -44,6 +72,7 @@ const VENUES = [
     coords: { x: 42, y: 67 },
     opponentId: 'detective_callahan',
     opponents: ['detective_callahan', 'detective_torres', 'patrol_donovan', 'captain_ortiz', 'judge_levine'],
+    dealer: 'henry',
     openings: ['night', 'late'],
     interiorImage: 'firehouse.jpg',
   },
@@ -65,6 +94,7 @@ const VENUES = [
     coords: { x: 58, y: 22 },
     opponentId: 'trust_fund_kid',
     opponents: ['trust_fund_kid', 'broker_kessler', 'heir_ashford'],
+    dealer: 'vance',
     openings: ['night', 'late'],
   },
   {
@@ -85,6 +115,7 @@ const VENUES = [
     coords: { x: 30, y: 12 },
     opponentId: 'silk_glove',
     opponents: ['silk_glove', 'broker_kessler', 'trust_fund_kid'],
+    dealer: 'vance',
     openings: ['late'],
   },
 ];
@@ -97,6 +128,15 @@ const OPPONENTS = {
     portraitDir: 'joey/',
     portraitMoods: ['neutral','confident','uncertain','suspicious','resigned','thinking','anxious','observing','angry','defeated'],
     profile: { competence: 0.3, aggression: 0.3, bluff: 0.06 },
+    preGameDialog: {
+      opening: 'Hey kid — you owe Grama anything? Word travels fast.',
+      branches: [
+        { player: 'I\'m good.', npc: 'Smart. Stay that way.', branches: [
+          { player: 'You been here long?', npc: 'Twenty years. Same chair. Same coffee.' },
+        ]},
+        { player: 'What\'s it to you?', npc: 'Nothing. Just looking out, kid.' },
+      ],
+    },
     dialog: {
       hand_start: ['So we play again, McDermott.', 'New deal. New problems.', 'Long shift tonight.'],
       strong:    ['Sleep on it, kid. There\'s the door.', 'You\'re catching me on a good one.'],
@@ -121,6 +161,13 @@ const OPPONENTS = {
     label: 'Delivery guy on a break. Smells of garlic.',
     portraitTint: '#6a3a1a',
     profile: { competence: 0.28, aggression: 0.4, bluff: 0.15 },
+    preGameDialog: {
+      opening: 'You order a large pepperoni or you here to play?',
+      branches: [
+        { player: 'Just play, Tony.', npc: 'Heh. Wiseguy.' },
+        { player: 'Hold the anchovies.', npc: 'Comedian. Sit down, comedian.' },
+      ],
+    },
     dialog: {
       hand_start: ['Three hours of deliveries. Now this.', 'I\'m on my dinner break.'],
       strong:    ['You wanna bet against the pie?', 'I got the goods, McDermott.'],
@@ -142,6 +189,13 @@ const OPPONENTS = {
     label: 'Yellow cab. Two ex-wives.',
     portraitTint: '#5a4520',
     profile: { competence: 0.4, aggression: 0.32, bluff: 0.12 },
+    preGameDialog: {
+      opening: 'You need a lift home later? Discount for poker buddies.',
+      branches: [
+        { player: 'I\'ll walk.', npc: 'Suit yourself.' },
+        { player: 'Depends. Where are you headed?', npc: 'Wherever pays. You play, we\'ll see.' },
+      ],
+    },
     dialog: {
       hand_start: ['I got a fare in twenty.', 'Just one more hand.'],
       strong:    ['You wanna get out of my way, McDermott?', 'I got this one, kid.'],
@@ -163,6 +217,13 @@ const OPPONENTS = {
     label: 'Off-duty homicide, 27 years on the job',
     portraitTint: '#3a4a3a',
     profile: { competence: 0.78, aggression: 0.55, bluff: 0.18 },
+    preGameDialog: {
+      opening: 'McDermott. I know your face. Behave at my table.',
+      branches: [
+        { player: 'Always do, Sergeant.', npc: 'We\'ll see.' },
+        { player: 'You know me?', npc: 'I know everyone. Sit down.' },
+      ],
+    },
     dialog: {
       hand_start: ['Let\'s see what you got tonight, son.', 'Fresh deck. Same liars.'],
       strong:    ['I\'ve put away tougher liars than you, son.', 'Don\'t do anything stupid.'],
@@ -186,6 +247,13 @@ const OPPONENTS = {
     label: 'Narcotics. Hates losing.',
     portraitTint: '#4a3a2a',
     profile: { competence: 0.6, aggression: 0.78, bluff: 0.3 },
+    preGameDialog: {
+      opening: 'TAKE A SEAT, KID.',
+      branches: [
+        { player: 'A cop. What, is the donut shop closed?', npc: 'Funny man. Real funny. Sit.' },
+        { player: 'Sir.', npc: 'Smart kid.' },
+      ],
+    },
     dialog: {
       hand_start: ['C\'mon, hurry up.', 'New hand. Let\'s go.'],
       strong:    ['Wanna run a tab on this one too?', 'You\'re cooked.'],
@@ -206,6 +274,12 @@ const OPPONENTS = {
     label: 'Rookie. Plays scared.',
     portraitTint: '#2a3a4a',
     profile: { competence: 0.35, aggression: 0.22, bluff: 0.04 },
+    preGameDialog: {
+      opening: 'Hey, um, you played here before?',
+      branches: [
+        { player: 'First time.', npc: 'Oh — cool, cool. Me too, kind of.' },
+      ],
+    },
     dialog: {
       hand_start: ['Uh — okay, ready.', 'Deal me in.'],
       strong:    ['Uh, I think... yeah, yeah I\'ll bet.', 'I... I got something.'],
@@ -226,6 +300,13 @@ const OPPONENTS = {
     label: 'Tournament regular. Senior brass.',
     portraitTint: '#3a3a3a',
     profile: { competence: 0.82, aggression: 0.5, bluff: 0.16 },
+    preGameDialog: {
+      opening: 'Discretion tonight, McDermott. The press shouldn\'t know we\'re here.',
+      branches: [
+        { player: 'Understood, sir.', npc: 'Good.' },
+        { player: 'I don\'t talk to press.', npc: 'See that you don\'t.' },
+      ],
+    },
     dialog: {
       hand_start: ['Deal.', 'Let\'s see it.'],
       strong:    ['Carefully now, McDermott.', 'Mind the pot.'],
@@ -246,6 +327,13 @@ const OPPONENTS = {
     label: 'Civil bench. Cold operator.',
     portraitTint: '#3a2a3a',
     profile: { competence: 0.88, aggression: 0.42, bluff: 0.1 },
+    preGameDialog: {
+      opening: 'I have read your case file. Twice.',
+      branches: [
+        { player: 'Civil or criminal?', npc: 'Both. Sit.' },
+        { player: 'I have no case file.', npc: 'Yes. You do.' },
+      ],
+    },
     dialog: {
       hand_start: ['Proceed.', 'Order. Let us begin.'],
       strong:    ['I\'ll see your tell, son.', 'The verdict is in.'],
@@ -266,6 +354,13 @@ const OPPONENTS = {
     label: 'Hedge fund, two ex-wives, no fear',
     portraitTint: '#7a5a2a',
     profile: { competence: 0.45, aggression: 0.78, bluff: 0.32 },
+    preGameDialog: {
+      opening: 'You\'re the one Daddy mentioned, aren\'t you?',
+      branches: [
+        { player: 'Probably.', npc: 'Charming. Sit.' },
+        { player: 'I don\'t know your daddy.', npc: 'Everyone knows my daddy.' },
+      ],
+    },
     dialog: {
       hand_start: ['Let\'s gamble, gentlemen.', 'I\'ve got a flight at six.'],
       strong:    ['Daddy taught me well.', 'You really wanna find out?'],
@@ -289,6 +384,13 @@ const OPPONENTS = {
     label: 'Broker. Reads the room. Slow.',
     portraitTint: '#5a4a2a',
     profile: { competence: 0.7, aggression: 0.5, bluff: 0.2 },
+    preGameDialog: {
+      opening: 'Position open at my firm. Big risk, big reward. Interested?',
+      branches: [
+        { player: 'I\'m here for cards.', npc: 'Of course.' },
+        { player: 'What kind of risk?', npc: 'The kind that pays. Sit.' },
+      ],
+    },
     dialog: {
       hand_start: ['Markets are open.', 'Let\'s see the spread.'],
       strong:    ['I like the position.', 'Long this one.'],
@@ -309,6 +411,13 @@ const OPPONENTS = {
     label: 'Heir, day-drinks, splashes the pot',
     portraitTint: '#7a4a4a',
     profile: { competence: 0.28, aggression: 0.82, bluff: 0.4 },
+    preGameDialog: {
+      opening: 'You look like someone I dated at Yale.',
+      branches: [
+        { player: 'You went to Yale?', npc: 'Mummy did. Same thing.' },
+        { player: 'You\'re drunk.', npc: 'Yes. Sit.' },
+      ],
+    },
     dialog: {
       hand_start: ['Bartender! ... oh, deal me in.', 'Hello, fellows.'],
       strong:    ['I rather like these.', 'Cheers to me.'],
@@ -329,6 +438,13 @@ const OPPONENTS = {
     label: 'Old country money. Quiet hands.',
     portraitTint: '#553a3a',
     profile: { competence: 0.82, aggression: 0.62, bluff: 0.24 },
+    preGameDialog: {
+      opening: 'Welcome, McDermott. Please. Do not embarrass us.',
+      branches: [
+        { player: 'I\'ll do my best.', npc: 'I\'m sure you will.' },
+        { player: 'Define embarrass.', npc: 'You will know it when you do it.' },
+      ],
+    },
     dialog: {
       hand_start: ['Welcome, McDermott.', 'Slowly now.'],
       strong:    ['Care to dance?', 'You came to the wrong house.'],
@@ -366,6 +482,15 @@ const PARTNERS = {
     portraitTint: '#3a3a52',
     portraitMoods: ['resigned','signaling','thinking','confident','anxious','shocked','happy','neutral','focused','suspicious','waiting'],
     label: 'Your partner — sleight-of-hand specialist',
+    preGameDialog: {
+      opening: 'Nice to meet you. I\'m Worm. It\'ll be a pleasure to take your money.',
+      branches: [
+        { player: 'Ah, a wiseguy.', npc: 'Always, Mikey. Always.', branches: [
+          { player: 'Just don\'t blow it.', npc: 'Trust me. We split sixty-forty, remember.' },
+        ]},
+        { player: 'Try not to get us caught.', npc: 'Easy. Smooth as silk.' },
+      ],
+    },
     dialog: {
       hand_start: ['Eyes up, Mikey.', 'Watch the signals.', 'Let\'s eat tonight.'],
       strong:    ['I got the hammer, partner.', 'They\'re cooked.'],
@@ -809,7 +934,7 @@ const SECRET_OBJECTIVES = {
 };
 
 window.GameData = {
-  VENUES, OPPONENTS, PARTNERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
+  VENUES, OPPONENTS, PARTNERS, DEALERS, VOICES, PHONE_MESSAGES, WORM_SIGNALS,
   SECRET_OBJECTIVES, TURN_EXCHANGES, WORM_TURN_EXCHANGES,
   RANK_BANDS, TIME_CYCLE, rankFor, classifyWormHand, pickDialog,
 };
