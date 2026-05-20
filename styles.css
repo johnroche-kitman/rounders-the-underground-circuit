@@ -346,10 +346,11 @@ body {
 }
 .table-preview-top .back-btn:hover { color: var(--amber); }
 
-/* Card row */
+/* Card row — always a single row, cards divide width equally */
 .table-preview-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -357,7 +358,8 @@ body {
 .tp-card {
   position: relative;
   display: flex; flex-direction: column;
-  padding: 16px 16px 20px;
+  padding: 14px 14px 18px;
+  min-width: 0;
   background:
     linear-gradient(180deg, rgba(120,110,95,0.16) 0%, rgba(60,55,48,0.22) 100%),
     var(--ink-2);
