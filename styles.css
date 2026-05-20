@@ -1034,6 +1034,16 @@ body {
   gap: 8px;
   padding: 10px 14px;
 }
+.action-btn.raise-primary.disabled,
+.action-btn.raise-primary input[type="range"]:disabled {
+  cursor: not-allowed;
+}
+.action-btn.raise-primary.disabled {
+  background: linear-gradient(180deg, #4a3a26 0%, #2a2018 100%);
+  border-color: #4a3a26;
+  color: rgba(0,0,0,0.6);
+  opacity: 0.55;
+}
 .action-btn.raise-primary:hover:not(:disabled) {
   background: var(--sick-yellow);
   border-color: var(--sick-yellow);

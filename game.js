@@ -767,57 +767,59 @@ function makePlaceholderEl() {
 function renderActionBar() {
   const bar = $('#action-bar');
   bar.innerHTML = '';
-  if (hand.finished || !isHeroTurn()) return;
+  if (!hand) return;
   const venue = D.VENUES.find(v => v.id === state.session.venueId);
-  const owed = P.callAmount(hand, 0);
-  const acts = P.legalActions(hand, 0);
+  const heroIsTurn = isHeroTurn() && !hand.finished;
+  const owed = heroIsTurn ? P.callAmount(hand, 0) : 0;
+  const acts = heroIsTurn ? P.legalActions(hand, 0) : [];
   const canRaise = acts.find(a => a.type === 'raise');
   const canFold = acts.find(a => a.type === 'fold');
   const heroIsDealer = hand.buttonIndex === heroIdx();
+  // When it's not the hero's turn, render the buttons disabled but in place
+  const allDisabled = !heroIsTurn;
 
   // 1) CHECK/CALL — single button (auto-checks if nothing owed)
   const ccBtn = document.createElement('button');
   ccBtn.className = 'action-btn';
-  const ccLabel = owed === 0 ? 'CHECK/CALL' : 'CHECK/CALL';
-  ccBtn.innerHTML = `<span>${ccLabel}</span><span class="key">${owed === 0 ? '—' : dollars(owed)}</span>`;
-  ccBtn.addEventListener('click', () => {
+  ccBtn.disabled = allDisabled;
+  ccBtn.innerHTML = `<span>CHECK/CALL</span><span class="key">${heroIsTurn ? (owed === 0 ? '—' : dollars(owed)) : 'WAITING'}</span>`;
+  if (!allDisabled) ccBtn.addEventListener('click', () => {
     const action = owed === 0 ? { type: 'check' } : { type: 'call', amount: owed };
     playerAct(action);
   });
   bar.appendChild(ccBtn);
 
-  // 2) RAISE primary — slider + commit
-  if (canRaise) {
-    const wrap = document.createElement('div');
-    wrap.className = 'action-btn raise-primary';
-    const startVal = Math.min(Math.max(canRaise.min, Math.floor(hand.pot * 0.66)), canRaise.max);
-    wrap.innerHTML = `
-      <span>RAISE</span>
-      <div class="raise-row">
-        <input type="range" min="${canRaise.min}" max="${canRaise.max}" step="${venue.blinds.big}" value="${startVal}" />
-        <span class="raise-amt">${dollars(startVal)}</span>
-      </div>
-      <button class="commit-btn" type="button">COMMIT</button>
-    `;
+  // 2) RAISE primary — slider + commit (always rendered)
+  const minR = canRaise ? canRaise.min : venue.blinds.big;
+  const maxR = canRaise ? canRaise.max : venue.blinds.big * 10;
+  const startVal = canRaise
+    ? Math.min(Math.max(canRaise.min, Math.floor(hand.pot * 0.66)), canRaise.max)
+    : minR;
+  const wrap = document.createElement('div');
+  wrap.className = 'action-btn raise-primary';
+  if (allDisabled || !canRaise) wrap.classList.add('disabled');
+  wrap.innerHTML = `
+    <span>RAISE</span>
+    <div class="raise-row">
+      <input type="range" min="${minR}" max="${maxR}" step="${venue.blinds.big}" value="${startVal}" ${allDisabled || !canRaise ? 'disabled' : ''} />
+      <span class="raise-amt">${dollars(startVal)}</span>
+    </div>
+    <button class="commit-btn" type="button" ${allDisabled || !canRaise ? 'disabled' : ''}>COMMIT</button>
+  `;
+  if (!allDisabled && canRaise) {
     const slider = wrap.querySelector('input');
     const amt = wrap.querySelector('.raise-amt');
     slider.addEventListener('input', () => { amt.textContent = dollars(+slider.value); });
     wrap.querySelector('.commit-btn').addEventListener('click', () => playerAct({ type: 'raise', amount: +slider.value }));
-    bar.appendChild(wrap);
-  } else {
-    const ph = document.createElement('div');
-    ph.className = 'action-btn';
-    ph.style.opacity = '0.3';
-    ph.innerHTML = '<span>RAISE</span><span class="key">—</span>';
-    bar.appendChild(ph);
   }
+  bar.appendChild(wrap);
 
   // 3) FOLD
   const foldBtn = document.createElement('button');
   foldBtn.className = 'action-btn';
-  foldBtn.innerHTML = `<span>FOLD</span><span class="key">[3]</span>`;
-  foldBtn.disabled = !canFold;
-  foldBtn.addEventListener('click', () => playerAct({ type: 'fold' }));
+  foldBtn.disabled = allDisabled || !canFold;
+  foldBtn.innerHTML = `<span>FOLD</span><span class="key">${heroIsTurn ? '[3]' : 'WAITING'}</span>`;
+  if (!allDisabled) foldBtn.addEventListener('click', () => playerAct({ type: 'fold' }));
   bar.appendChild(foldBtn);
 
   // 4) CHEAT stack — Muck + Peek (Read Intent merged into the COLD READ tag)
@@ -829,14 +831,14 @@ function renderActionBar() {
   const muckDisabled = !heroIsDealer || !!state.sleeveCard || venue.cheatingRisk === 'extreme' || hand.street !== 'preflop';
   const muckBtn = document.createElement('button');
   muckBtn.className = 'action-btn cheat';
-  muckBtn.disabled = muckDisabled;
+  muckBtn.disabled = allDisabled || muckDisabled;
   muckBtn.innerHTML = `<span>CHEAT: Muck</span><span class="sub">${heroIsDealer ? muckRisk + '% RISK' : 'DEALER ONLY'}</span>`;
-  muckBtn.addEventListener('click', cheatMuckCard);
+  if (!allDisabled) muckBtn.addEventListener('click', cheatMuckCard);
   const peekBtn = document.createElement('button');
   peekBtn.className = 'action-btn cheat';
-  peekBtn.disabled = peekDisabled;
+  peekBtn.disabled = allDisabled || peekDisabled;
   peekBtn.innerHTML = `<span>CHEAT: Peek</span><span class="sub">${heroIsDealer ? peekRisk + '% RISK' : 'DEALER ONLY'}</span>`;
-  peekBtn.addEventListener('click', cheatPeekTopCard);
+  if (!allDisabled) peekBtn.addEventListener('click', cheatPeekTopCard);
   stack.appendChild(muckBtn);
   stack.appendChild(peekBtn);
   bar.appendChild(stack);
