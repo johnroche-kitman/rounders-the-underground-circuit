@@ -162,6 +162,8 @@ const OPPONENTS = {
     name: 'Pizza Tony',
     label: 'Delivery guy on a break. Smells of garlic.',
     portraitTint: '#6a3a1a',
+    portraitDir: 'pizza-tony/',
+    portraitMoods: ['neutral','confident','uncertain','suspicious','resigned','thinking','anxious','observing','angry','defeated','waiting'],
     profile: { competence: 0.28, aggression: 0.4, bluff: 0.15 },
     preGameDialog: {
       opening: 'You order a large pepperoni or you here to play?',
