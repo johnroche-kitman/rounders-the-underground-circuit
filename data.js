@@ -50,7 +50,7 @@ const VENUES = [
     coords: { x: 56, y: 78 },
     opponentId: 'deli_grinder',
     opponents: ['deli_grinder', 'pizza_tony', 'cab_driver_pete'],
-    dealer: 'michelle',
+    // No house dealer at Joey's — it's a backroom cash game, players deal in turn
     openings: ['day', 'night', 'late'],
     interiorImage: 'joey-deli.jpg',
   },
