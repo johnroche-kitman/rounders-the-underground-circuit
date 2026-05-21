@@ -229,15 +229,18 @@ function buildCharacterCard(seat) {
     label = `SEAT ${oppOrder.indexOf(seat.id) + 1}`;
   }
   const desc = isPartner ? 'Your partner.' : (def.label || '');
-  const portrait = (def.portraitDir && def.portraitMoods)
-    ? `<img src="${def.portraitDir}neutral.jpg" alt="" />`
-    : `<span class="tp-initials">${initialsFor(seat.name)}</span>`;
   const cardId = seat.id;
   const tree = def.preGameDialog;
   const conv = state.session.preGameConv[cardId] || { path: [] };
   state.session.preGameConv[cardId] = conv;
   const node = walkDialogTree(tree, conv.path);
   const npcLine = node?.line || '';
+  // Use the current mood for the portrait; fall back to neutral if the mood
+  // image doesn't exist for this character.
+  const mood = (node?.mood && def.portraitMoods?.includes(node.mood)) ? node.mood : 'neutral';
+  const portrait = (def.portraitDir && def.portraitMoods)
+    ? `<img src="${def.portraitDir}${mood}.jpg" alt="" />`
+    : `<span class="tp-initials">${initialsFor(seat.name)}</span>`;
   const choicesHtml = (node?.branches || []).map((b, i) => {
     const newPath = [...conv.path, i].join('.');
     return `<button class="tp-choice" data-card-id="${cardId}" data-path="${newPath}"><span class="num">${i+1}.</span>&ldquo;${escapeHtml(b.player)}&rdquo;</button>`;
@@ -274,15 +277,21 @@ function buildDealerCard(def) {
 function walkDialogTree(tree, path) {
   if (!tree) return null;
   let line = tree.opening;
+  let mood = 'neutral';
   let branches = tree.branches || [];
   for (const idx of path) {
     const b = branches[idx];
     if (!b) break;
     line = b.npc;
+    mood = b.mood || rotationMood(path.length); // fallback rotation
     branches = b.branches || [];
   }
-  return { line, branches };
+  return { line, branches, mood };
 }
+
+// Fallback mood when none specified — rotates so consecutive picks visually differ
+const _MOOD_ROTATION = ['confident','thinking','uncertain','suspicious','observing','resigned'];
+function rotationMood(n) { return _MOOD_ROTATION[(n - 1) % _MOOD_ROTATION.length] || 'thinking'; }
 
 function pickPreGameChoice(cardId, pathStr) {
   const conv = state.session.preGameConv?.[cardId];
@@ -1480,6 +1489,13 @@ function renderTurnDialog(idx, npcLine, opts = {}) {
     btn.innerHTML = `<span class="num">${n+1}.</span>&ldquo;${ex.player.replace(/'/g, '’')}&rdquo;`;
     btn.addEventListener('click', () => {
       used.push(i);
+      // Swap the focused opp's portrait to the exchange's mood (if available)
+      const charDef = characterFor(seat);
+      const mood = ex.mood;
+      if (mood && charDef?.portraitMoods?.includes(mood)) {
+        const face = $('#opp-face');
+        if (face) setMoodOn(face, mood);
+      }
       renderTurnDialog(idx, ex.npc);
     });
     choices.appendChild(btn);

@@ -133,10 +133,10 @@ const OPPONENTS = {
     preGameDialog: {
       opening: 'Hey kid — you owe Grama anything? Word travels fast.',
       branches: [
-        { player: 'I\'m good.', npc: 'Smart. Stay that way.', branches: [
-          { player: 'You been here long?', npc: 'Twenty years. Same chair. Same coffee.' },
+        { player: 'I\'m good.', npc: 'Smart. Stay that way.', mood: 'confident', branches: [
+          { player: 'You been here long?', npc: 'Twenty years. Same chair. Same coffee.', mood: 'resigned' },
         ]},
-        { player: 'What\'s it to you?', npc: 'Nothing. Just looking out, kid.' },
+        { player: 'What\'s it to you?', npc: 'Nothing. Just looking out, kid.', mood: 'suspicious' },
       ],
     },
     dialog: {
@@ -168,8 +168,8 @@ const OPPONENTS = {
     preGameDialog: {
       opening: 'You order a large pepperoni or you here to play?',
       branches: [
-        { player: 'Just play, Tony.', npc: 'Heh. Wiseguy.' },
-        { player: 'Hold the anchovies.', npc: 'Comedian. Sit down, comedian.' },
+        { player: 'Just play, Tony.', npc: 'Heh. Wiseguy.', mood: 'confident' },
+        { player: 'Hold the anchovies.', npc: 'Comedian. Sit down, comedian.', mood: 'uncertain' },
       ],
     },
     dialog: {
@@ -489,10 +489,10 @@ const PARTNERS = {
     preGameDialog: {
       opening: 'Nice to meet you. I\'m Worm. It\'ll be a pleasure to take your money.',
       branches: [
-        { player: 'Ah, a wiseguy.', npc: 'Always, Mikey. Always.', branches: [
-          { player: 'Just don\'t blow it.', npc: 'Trust me. We split sixty-forty, remember.' },
+        { player: 'Ah, a wiseguy.', npc: 'Always, Mikey. Always.', mood: 'confident', branches: [
+          { player: 'Just don\'t blow it.', npc: 'Trust me. We split sixty-forty, remember.', mood: 'thinking' },
         ]},
-        { player: 'Try not to get us caught.', npc: 'Easy. Smooth as silk.' },
+        { player: 'Try not to get us caught.', npc: 'Easy. Smooth as silk.', mood: 'confident' },
       ],
     },
     dialog: {
@@ -847,32 +847,32 @@ function pickDialog(opp, situation) {
 // Generic player ↔ NPC exchange pool. Each NPC turn shows a couple of these
 // alongside [Play on]. Picking a player line triggers the paired NPC reaction.
 const TURN_EXCHANGES = [
-  { player: 'You\'re playing scared.',             npc: 'Maybe. Maybe not.' },
-  { player: 'You sweating yet?',                    npc: 'Cold as ice, kid.' },
-  { player: 'Just play.',                           npc: 'I just did.' },
-  { player: 'What\'s your story?',                  npc: 'Long shifts, bad coffee. Same as yours.' },
-  { player: 'You ever win these games?',            npc: 'I\'m sitting here, aren\'t I?' },
-  { player: 'Long way from home, friend.',          npc: 'It pays the bills.' },
-  { player: 'You\'re bleeding chips.',              npc: 'I noticed.' },
-  { player: 'I\'ll see you on the river.',          npc: 'I\'ll be there.' },
-  { player: 'Take a beat. You look tired.',         npc: 'I am tired.' },
-  { player: 'You don\'t play this hand right.',     npc: 'And you do?' },
-  { player: 'Nice shirt.',                          npc: '... Thanks?' },
-  { player: 'You owe Grama too?',                   npc: 'We all owe somebody.' },
-  { player: 'Three more hands, I\'m gone.',         npc: 'Sure. That\'s what we all say.' },
-  { player: 'You holding a monster?',               npc: 'Pay to find out.' },
-  { player: 'Tell me you\'re bluffing.',            npc: 'I\'m bluffing.' },
-  { player: 'You played this against me last week.',npc: 'And I lost. So I\'m back.' },
+  { player: 'You\'re playing scared.',             npc: 'Maybe. Maybe not.',                              mood: 'suspicious' },
+  { player: 'You sweating yet?',                    npc: 'Cold as ice, kid.',                              mood: 'confident' },
+  { player: 'Just play.',                           npc: 'I just did.',                                    mood: 'resigned' },
+  { player: 'What\'s your story?',                  npc: 'Long shifts, bad coffee. Same as yours.',         mood: 'thinking' },
+  { player: 'You ever win these games?',            npc: 'I\'m sitting here, aren\'t I?',                   mood: 'confident' },
+  { player: 'Long way from home, friend.',          npc: 'It pays the bills.',                              mood: 'resigned' },
+  { player: 'You\'re bleeding chips.',              npc: 'I noticed.',                                      mood: 'anxious' },
+  { player: 'I\'ll see you on the river.',          npc: 'I\'ll be there.',                                 mood: 'observing' },
+  { player: 'Take a beat. You look tired.',         npc: 'I am tired.',                                     mood: 'defeated' },
+  { player: 'You don\'t play this hand right.',     npc: 'And you do?',                                     mood: 'angry' },
+  { player: 'Nice shirt.',                          npc: '... Thanks?',                                     mood: 'uncertain' },
+  { player: 'You owe Grama too?',                   npc: 'We all owe somebody.',                            mood: 'resigned' },
+  { player: 'Three more hands, I\'m gone.',         npc: 'Sure. That\'s what we all say.',                  mood: 'thinking' },
+  { player: 'You holding a monster?',               npc: 'Pay to find out.',                                mood: 'confident' },
+  { player: 'Tell me you\'re bluffing.',            npc: 'I\'m bluffing.',                                  mood: 'confident' },
+  { player: 'You played this against me last week.',npc: 'And I lost. So I\'m back.',                       mood: 'thinking' },
 ];
 
 // Worm-flavoured exchanges — when partner is acting these surface instead.
 const WORM_TURN_EXCHANGES = [
-  { player: 'What did you see?',                    npc: 'Eyes up. I told you.' },
-  { player: 'Make it count.',                       npc: 'Always do, Mikey.' },
-  { player: 'Don\'t blow it.',                      npc: 'Hey. Trust the partner.' },
-  { player: 'Push him harder.',                     npc: 'Easy. Don\'t boil the soup.' },
-  { player: 'Hold back this hand.',                 npc: 'Smart. We pace ourselves.' },
-  { player: 'Are we splitting fifty-fifty?',        npc: 'Sixty-forty, my brother. As agreed.' },
+  { player: 'What did you see?',                    npc: 'Eyes up. I told you.',                       mood: 'signaling' },
+  { player: 'Make it count.',                       npc: 'Always do, Mikey.',                          mood: 'confident' },
+  { player: 'Don\'t blow it.',                      npc: 'Hey. Trust the partner.',                    mood: 'focused' },
+  { player: 'Push him harder.',                     npc: 'Easy. Don\'t boil the soup.',                mood: 'thinking' },
+  { player: 'Hold back this hand.',                 npc: 'Smart. We pace ourselves.',                  mood: 'waiting' },
+  { player: 'Are we splitting fifty-fifty?',        npc: 'Sixty-forty, my brother. As agreed.',        mood: 'happy' },
 ];
 
 // Secret objectives — opps occasionally pull the hero aside with a side-deal.
